@@ -65,7 +65,7 @@ const Index = () => {
             <span className="text-gradient">Mustafa</span>
           </h1>
           <p className="text-muted-foreground mt-2 text-center">
-            Software Engineer • Creative Technologist
+            Software Engineer • AI Researcher
           </p>
           <p className="text-muted-foreground/60 text-sm mt-4">
             Click and drag to explore • Select a menu item to learn more

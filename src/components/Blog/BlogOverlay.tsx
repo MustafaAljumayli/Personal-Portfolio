@@ -56,14 +56,14 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 100 }}
+      initial={{ opacity: 0, y: -100 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 100 }}
+      exit={{ opacity: 0, y: -100 }}
       transition={{ type: "spring", damping: 25 }}
-      className="fixed inset-x-0 top-[40vh] bottom-0 z-30 bg-gradient-to-t from-background via-background to-background/80 overflow-hidden"
+      className="fixed inset-x-0 top-20 bottom-[30vh] z-30 overflow-hidden"
     >
-      {/* Globe visible at bottom with gradient fade */}
-      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-background pointer-events-none" />
+      {/* Gradient fade at bottom to blend with globe */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background/90 to-transparent pointer-events-none z-10" />
 
       <div className="h-full overflow-y-auto custom-scrollbar pt-8 pb-20 px-6">
         <div className="max-w-4xl mx-auto">
