@@ -19,7 +19,7 @@ const ProjectsPage = () => {
           </Link>
 
           <div className="font-display text-lg font-semibold">
-            <span className="text-gradient">Projects</span>
+            <span className="text-gradient-unc">Projects</span>
           </div>
 
           <div className="w-[60px]" />
@@ -33,7 +33,7 @@ const ProjectsPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="font-display text-3xl md:text-4xl font-bold mb-2"
           >
-            All <span className="text-gradient">Projects</span>
+            All <span className="text-gradient-unc">Projects</span>
           </motion.h1>
           <p className="text-muted-foreground mb-8">
             A full list of my work—scroll to explore.

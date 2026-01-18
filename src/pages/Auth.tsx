@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
 
-const emailSchema = z.string().email("Please enter a valid email address");
+const emailSchema = z.string().trim().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
 const Auth = () => {
@@ -21,6 +21,8 @@ const Auth = () => {
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
+  const normalizeEmail = (value: string) => value.trim().replace(/\s+/g, "");
+
   useEffect(() => {
     if (user) {
       navigate("/");
@@ -30,7 +32,7 @@ const Auth = () => {
   const validate = () => {
     const newErrors: typeof errors = {};
 
-    const emailResult = emailSchema.safeParse(email);
+    const emailResult = emailSchema.safeParse(normalizeEmail(email));
     if (!emailResult.success) {
       newErrors.email = emailResult.error.errors[0].message;
     }
@@ -53,14 +55,16 @@ const Auth = () => {
     if (!validate()) return;
 
     setIsSubmitting(true);
+    const normalizedEmail = normalizeEmail(email);
+    setEmail(normalizedEmail);
     
     if (isSignUp) {
-      const { error } = await signUp(email, password);
+      const { error } = await signUp(normalizedEmail, password);
       if (!error) {
         navigate("/");
       }
     } else {
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(normalizedEmail, password);
       if (!error) {
         navigate("/");
       }
@@ -97,12 +101,15 @@ const Auth = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Disable native browser validation so we control email validation/normalization. */}
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           <div>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

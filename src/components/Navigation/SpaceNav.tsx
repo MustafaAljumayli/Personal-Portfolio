@@ -38,12 +38,15 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/30 backdrop-blur-md border-b border-border/30">
         <div className="px-6 py-4 flex items-center justify-between">
           {/* Logo */}
-          <button 
+          <button
             onClick={handleLogoClick}
             className="font-display text-2xl font-bold tracking-tight hover:text-primary transition-colors"
           >
-            <span className="text-gradient">M</span>
-            <span className="text-foreground">ustafa</span>
+            {/* <span className="text-gradient-unc">M</span> */}
+            <span className="text-gradient-unc">M</span>
+            <span className="text-foreground">ustafa </span>
+            {/* <span className="text-gradient-unc">A</span>
+            <span className="text-foreground">ljumayli</span> */}
           </button>
 
           {/* Desktop Navigation */}
@@ -57,8 +60,8 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                   onClick={() => handleNavClick(item.id)}
                   className={`
                     flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300
-                    ${isActive 
-                      ? "bg-primary/20 text-primary glow-text" 
+                    ${isActive
+                      ? "bg-primary/20 text-primary glow-text"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }
                   `}
@@ -75,7 +78,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
             {user ? (
               <>
                 {isAdmin && (
-                  <Link 
+                  <Link
                     to="/admin"
                     className="flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
                   >
@@ -134,8 +137,8 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                     transition={{ delay: index * 0.05 }}
                     className={`
                       flex items-center gap-3 px-6 py-3 rounded-lg text-lg font-medium w-full max-w-xs transition-all
-                      ${isActive 
-                        ? "bg-primary/20 text-primary" 
+                      ${isActive
+                        ? "bg-primary/20 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       }
                     `}
@@ -145,12 +148,12 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                   </motion.button>
                 );
               })}
-              
+
               <div className="border-t border-border/30 w-full max-w-xs pt-4 mt-4">
                 {user ? (
                   <>
                     {isAdmin && (
-                      <Link 
+                      <Link
                         to="/admin"
                         className="flex items-center gap-3 px-6 py-3 text-primary w-full max-w-xs"
                         onClick={() => setIsMobileOpen(false)}

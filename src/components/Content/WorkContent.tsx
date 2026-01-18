@@ -12,7 +12,7 @@ const WorkContent = () => {
         transition={{ delay: 0.1 }}
       >
         <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
-          My <span className="text-gradient">Work</span>
+          My <span className="text-gradient-unc">Work</span>
         </h2>
         <p className="text-muted-foreground">Featured projects and creations</p>
       </motion.div>

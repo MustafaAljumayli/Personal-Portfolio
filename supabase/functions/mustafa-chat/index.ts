@@ -1,5 +1,9 @@
+// @ts-nocheck
+// This file runs in the Supabase Edge Functions (Deno) runtime.
+// If you want full typechecking in-editor, enable the Deno extension for this folder.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Use the Deno-targeted build so type-checkers and the Edge runtime can resolve it cleanly.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +18,7 @@ serve(async (req) => {
   try {
     const { messages } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
+
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
@@ -38,7 +42,7 @@ serve(async (req) => {
 
     // Build knowledge context
     let knowledgeContext = "";
-    
+
     if (knowledge && knowledge.length > 0) {
       knowledgeContext += "## Personal Information\n";
       knowledge.forEach((item) => {

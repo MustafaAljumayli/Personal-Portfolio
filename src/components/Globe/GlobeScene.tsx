@@ -9,6 +9,7 @@ import Stars from "./Stars";
 interface GlobeSceneProps {
   activeSection: string | null;
   onSectionReady: () => void;
+  onGlobeReady?: () => void;
   cameraPosition?: { x: number; y: number; z: number };
 }
 
@@ -23,11 +24,11 @@ const sectionCoordinates: Record<string, { rotation: { x: number; y: number }; c
   ai: { rotation: { x: 0.1, y: 1.5 }, camera: { x: 3, y: 0, z: 3 } },
 };
 
-const CameraController = ({ 
-  activeSection, 
-  onReady 
-}: { 
-  activeSection: string | null; 
+const CameraController = ({
+  activeSection,
+  onReady
+}: {
+  activeSection: string | null;
   onReady: () => void;
 }) => {
   const { camera } = useThree();
@@ -58,12 +59,15 @@ const CameraController = ({
   return null;
 };
 
-const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
+const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeSceneProps) => {
   const [rotationComplete, setRotationComplete] = useState(false);
   const controlsRef = useRef<any>(null);
+  const { gl } = useThree();
+  const isPointerDownRef = useRef(false);
+  const hasSignaledGlobeReadyRef = useRef(false);
 
-  const targetRotation = activeSection && sectionCoordinates[activeSection] 
-    ? sectionCoordinates[activeSection].rotation 
+  const targetRotation = activeSection && sectionCoordinates[activeSection]
+    ? sectionCoordinates[activeSection].rotation
     : null;
 
   const handleRotationComplete = () => {
@@ -80,10 +84,48 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
     }
   }, [rotationComplete, onSectionReady]);
 
+  // This component only mounts after Suspense resolves (i.e., textures are loaded).
+  // Signal the parent so it can render nav/background AFTER the globe is ready.
+  useEffect(() => {
+    if (hasSignaledGlobeReadyRef.current) return;
+    hasSignaledGlobeReadyRef.current = true;
+    onGlobeReady?.();
+  }, [onGlobeReady]);
+
+  // Prevent trackpad "wheel" dolly from firing while actively dragging to rotate.
+  // This keeps 2-finger scroll zoom, but avoids accidental zoom during click+drag.
+  useEffect(() => {
+    const el = gl.domElement;
+
+    const handlePointerDown = () => {
+      isPointerDownRef.current = true;
+    };
+    const handlePointerUp = () => {
+      isPointerDownRef.current = false;
+    };
+    const handleWheel = (e: WheelEvent) => {
+      if (!isPointerDownRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    el.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
+    el.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      el.removeEventListener("wheel", handleWheel as EventListener);
+    };
+  }, [gl]);
+
   return (
     <>
-      <CameraController activeSection={activeSection} onReady={() => {}} />
-      <OrbitControls 
+      {/* Only drive the camera when a section is active. When free-rotating with OrbitControls,
+          CameraController would fight user input and can feel like unintended zooming. */}
+      {activeSection ? <CameraController activeSection={activeSection} onReady={() => { }} /> : null}
+      <OrbitControls
         ref={controlsRef}
         enableZoom={!activeSection}
         enablePan={false}
@@ -100,15 +142,15 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
         }}
         mouseButtons={{
           LEFT: THREE.MOUSE.ROTATE,
-          MIDDLE: THREE.MOUSE.DOLLY,
+          MIDDLE: THREE.MOUSE.ROTATE,
           RIGHT: THREE.MOUSE.PAN,
         }}
       />
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[5, 3, 5]} intensity={1.5} />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} color="#4da6ff" />
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[5, 3, 5]} intensity={7.1} />
+      <pointLight position={[-10, -10, -10]} intensity={10} color="#4da6ff" />
       <Stars />
-      <Earth 
+      <Earth
         isAutoRotating={!activeSection || activeSection === "blog"}
         targetRotation={targetRotation}
         onRotationComplete={handleRotationComplete}
@@ -118,18 +160,32 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
 };
 
 const GlobeScene = (props: GlobeSceneProps) => {
+  const [globeReady, setGlobeReady] = useState(false);
+
+  const handleGlobeReady = () => {
+    setGlobeReady(true);
+    props.onGlobeReady?.();
+  };
+
   return (
     <div
       className={cn(
         "absolute inset-0 transition-transform duration-700 ease-out",
-        props.activeSection === "blog" ? "translate-y-[22vh] scale-[0.9]" : "translate-y-0 scale-100"
+        props.activeSection === "blog" ? "translate-y-[65vh] scale-[0.9]" : "translate-y-0 scale-100"
       )}
     >
-      <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
-        <Suspense fallback={null}>
-          <GlobeContent {...props} />
-        </Suspense>
-      </Canvas>
+      <div
+        className={cn(
+          "h-full w-full transition-all duration-700 ease-out transform-gpu will-change-transform",
+          globeReady ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-[0.98] blur-[2px]"
+        )}
+      >
+        <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
+          <Suspense fallback={null}>
+            <GlobeContent {...props} onGlobeReady={handleGlobeReady} />
+          </Suspense>
+        </Canvas>
+      </div>
     </div>
   );
 };

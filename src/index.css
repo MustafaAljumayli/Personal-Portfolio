@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -49,8 +49,8 @@
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 210 100% 60%;
 
-    --font-display: 'Inter', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --font-display: 'Google Sans', sans-serif;
+    --font-body: 'Google Sans', sans-serif;
   }
 
   .dark {
@@ -98,7 +98,9 @@
     @apply border-border;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
     overflow: hidden;
   }
@@ -108,14 +110,27 @@
     font-family: var(--font-body);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-body);
   }
 }
 
 @layer components {
-  .text-gradient {
+  .text-gradient-unc {
     background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-gt {
+    background-image: linear-gradient(135deg, #b3a369 20%, #857437 80%);
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
@@ -142,22 +157,27 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
-    background-image: 
+    background-image:
       radial-gradient(2px 2px at 20px 30px, white, transparent),
-      radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+      radial-gradient(2px 2px at 40px 70px, rgba(255, 255, 255, 0.8), transparent),
       radial-gradient(1px 1px at 90px 40px, white, transparent),
-      radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.9), transparent),
+      radial-gradient(2px 2px at 160px 120px, rgba(255, 255, 255, 0.9), transparent),
       radial-gradient(1px 1px at 230px 80px, white, transparent),
-      radial-gradient(2px 2px at 300px 150px, rgba(255,255,255,0.7), transparent),
+      radial-gradient(2px 2px at 300px 150px, rgba(255, 255, 255, 0.7), transparent),
       radial-gradient(1px 1px at 400px 60px, white, transparent),
-      radial-gradient(2px 2px at 500px 200px, rgba(255,255,255,0.8), transparent);
+      radial-gradient(2px 2px at 500px 200px, rgba(255, 255, 255, 0.8), transparent);
     background-size: 550px 550px;
     animation: twinkle 8s ease-in-out infinite alternate;
   }
 
   @keyframes twinkle {
-    0% { opacity: 0.7; }
-    100% { opacity: 1; }
+    0% {
+      opacity: 0.7;
+    }
+
+    100% {
+      opacity: 1;
+    }
   }
 
   .content-panel {
@@ -170,6 +190,7 @@
       opacity: 0;
       transform: translateY(30px) scale(0.95);
     }
+
     to {
       opacity: 1;
       transform: translateY(0) scale(1);

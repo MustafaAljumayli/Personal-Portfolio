@@ -127,7 +127,7 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <h2 className="font-display text-3xl md:text-4xl font-bold">
-                      <span className="text-gradient">Blog</span>
+                      <span className="text-gradient-unc">Blog</span>
                     </h2>
                     <p className="text-muted-foreground mt-1">
                       Thoughts, tutorials, and insights

@@ -186,7 +186,7 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="star-field" />
-      
+
       <div className="max-w-4xl mx-auto relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -201,7 +201,7 @@ const Admin = () => {
           </button>
 
           <h1 className="font-display text-3xl font-bold mb-8">
-            Admin <span className="text-gradient">Dashboard</span>
+            Admin <span className="text-gradient-unc">Dashboard</span>
           </h1>
 
           <Tabs defaultValue="blog" className="w-full">
