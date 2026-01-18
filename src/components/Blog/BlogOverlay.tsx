@@ -207,8 +207,7 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
           </AnimatePresence>
         </div>
       </div>
-    </div>
-  </motion.div>
+    </motion.div>
   );
 };
 
