@@ -84,12 +84,20 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
       <CameraController activeSection={activeSection} onReady={() => {}} />
       <OrbitControls 
         ref={controlsRef}
-        enableZoom={false} 
+        enableZoom={!activeSection} 
         enablePan={false}
         enableRotate={!activeSection}
         rotateSpeed={0.5}
+        zoomSpeed={0.5}
+        minDistance={3}
+        maxDistance={10}
         minPolarAngle={Math.PI * 0.2}
         maxPolarAngle={Math.PI * 0.8}
+        mouseButtons={{
+          LEFT: THREE.MOUSE.ROTATE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.PAN
+        }}
       />
       <ambientLight intensity={0.3} />
       <directionalLight position={[5, 3, 5]} intensity={1.5} />
