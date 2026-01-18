@@ -56,17 +56,14 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -100 }}
+      initial={{ opacity: 0, y: -24 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -100 }}
+      exit={{ opacity: 0, y: -24 }}
       transition={{ type: "spring", damping: 25 }}
-      className="fixed inset-x-0 top-20 bottom-[30vh] z-30 overflow-hidden"
+      className="fixed inset-x-0 top-[10vh] bottom-[35vh] z-30 px-6"
     >
-      {/* Gradient fade at bottom to blend with globe */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background/90 to-transparent pointer-events-none z-10" />
-
-      <div className="h-full overflow-y-auto custom-scrollbar pt-8 pb-20 px-6">
-        <div className="max-w-4xl mx-auto">
+      <div className="h-full max-w-5xl mx-auto glass-panel overflow-hidden">
+        <div className="h-full overflow-y-auto custom-scrollbar p-6 md:p-8">
           <AnimatePresence mode="wait">
             {selectedPost ? (
               // Single Post View
@@ -210,7 +207,8 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
           </AnimatePresence>
         </div>
       </div>
-    </motion.div>
+    </div>
+  </motion.div>
   );
 };
 
