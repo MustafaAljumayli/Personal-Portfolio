@@ -2,6 +2,7 @@ import { Suspense, useRef, useEffect, useState } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import { cn } from "@/lib/utils";
 import Earth from "./Earth";
 import Stars from "./Stars";
 
@@ -84,7 +85,7 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
       <CameraController activeSection={activeSection} onReady={() => {}} />
       <OrbitControls 
         ref={controlsRef}
-        enableZoom={!activeSection} 
+        enableZoom={!activeSection}
         enablePan={false}
         enableRotate={!activeSection}
         rotateSpeed={0.5}
@@ -93,10 +94,14 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
         maxDistance={10}
         minPolarAngle={Math.PI * 0.2}
         maxPolarAngle={Math.PI * 0.8}
+        touches={{
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN,
+        }}
         mouseButtons={{
           LEFT: THREE.MOUSE.ROTATE,
           MIDDLE: THREE.MOUSE.DOLLY,
-          RIGHT: THREE.MOUSE.PAN
+          RIGHT: THREE.MOUSE.PAN,
         }}
       />
       <ambientLight intensity={0.3} />
@@ -104,7 +109,7 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
       <pointLight position={[-10, -10, -10]} intensity={0.5} color="#4da6ff" />
       <Stars />
       <Earth 
-        isAutoRotating={!activeSection}
+        isAutoRotating={!activeSection || activeSection === "blog"}
         targetRotation={targetRotation}
         onRotationComplete={handleRotationComplete}
       />
@@ -114,7 +119,12 @@ const GlobeContent = ({ activeSection, onSectionReady }: GlobeSceneProps) => {
 
 const GlobeScene = (props: GlobeSceneProps) => {
   return (
-    <div className="absolute inset-0">
+    <div
+      className={cn(
+        "absolute inset-0 transition-transform duration-700 ease-out",
+        props.activeSection === "blog" ? "translate-y-[22vh] scale-[0.9]" : "translate-y-0 scale-100"
+      )}
+    >
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
         <Suspense fallback={null}>
           <GlobeContent {...props} />

@@ -1,26 +1,7 @@
 import { motion } from "framer-motion";
 import { ExternalLink, Github } from "lucide-react";
-
-const projects = [
-  {
-    title: "AI Dashboard",
-    description: "Real-time analytics platform with machine learning insights",
-    tech: ["React", "Python", "TensorFlow"],
-    image: "bg-gradient-to-br from-purple-500/20 to-blue-500/20",
-  },
-  {
-    title: "E-Commerce Platform",
-    description: "Full-stack marketplace with payment integration",
-    tech: ["Next.js", "Node.js", "Stripe"],
-    image: "bg-gradient-to-br from-green-500/20 to-cyan-500/20",
-  },
-  {
-    title: "Social Media App",
-    description: "Mobile-first social platform with real-time messaging",
-    tech: ["React Native", "Firebase", "WebSocket"],
-    image: "bg-gradient-to-br from-pink-500/20 to-orange-500/20",
-  },
-];
+import { Link } from "react-router-dom";
+import { projects } from "@/data/projects";
 
 const WorkContent = () => {
   return (
@@ -36,33 +17,51 @@ const WorkContent = () => {
         <p className="text-muted-foreground">Featured projects and creations</p>
       </motion.div>
 
-      <div className="space-y-4">
-        {projects.map((project, index) => (
+      <div className="grid gap-4 sm:grid-cols-2">
+        {projects.slice(0, 4).map((project, index) => (
           <motion.div
             key={project.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 + index * 0.1 }}
-            className="group p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all cursor-pointer"
+            transition={{ delay: 0.2 + index * 0.08 }}
+            className="group p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all"
           >
-            <div className="flex gap-4">
-              <div className={`w-16 h-16 rounded-lg ${project.image} flex-shrink-0`} />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display font-semibold text-lg group-hover:text-primary transition-colors">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-display font-semibold text-lg group-hover:text-primary transition-colors truncate">
                     {project.title}
                   </h3>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1 hover:text-primary">
-                      <Github className="w-4 h-4" />
-                    </button>
-                    <button className="p-1 hover:text-primary">
-                      <ExternalLink className="w-4 h-4" />
-                    </button>
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    {project.githubUrl && (
+                      <a
+                        className="p-1 hover:text-primary"
+                        href={project.githubUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${project.title} GitHub`}
+                      >
+                        <Github className="w-4 h-4" />
+                      </a>
+                    )}
+                    {project.liveUrl && (
+                      <a
+                        className="p-1 hover:text-primary"
+                        href={project.liveUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${project.title} Live link`}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
                   </div>
                 </div>
+
                 <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
-                <div className="flex gap-2 mt-2">
+
+                <div className="flex flex-wrap gap-2 mt-3">
                   {project.tech.map((tech) => (
                     <span
                       key={tech}
@@ -78,14 +77,14 @@ const WorkContent = () => {
         ))}
       </div>
 
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="w-full py-3 text-center text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
-      >
-        View All Projects →
-      </motion.button>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+        <Link
+          to="/projects"
+          className="block w-full py-3 text-center text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
+        >
+          View All Projects →
+        </Link>
+      </motion.div>
     </div>
   );
 };
