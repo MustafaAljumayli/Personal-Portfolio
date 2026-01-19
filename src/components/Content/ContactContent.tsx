@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { resumeProfile } from "@/data/resume";
 
+const CONTACT_API_BASE_URL = (import.meta.env.VITE_CONTACT_API_BASE_URL as string | undefined)?.replace(/\/+$/, "");
+
 const socialLinks = [
   { icon: Mail, label: "Email", href: `mailto:${resumeProfile.email}`, value: resumeProfile.email },
   { icon: Linkedin, label: "LinkedIn", href: `https://${resumeProfile.linkedin}`, value: "@mustafa-aljumayli" },
@@ -28,7 +30,8 @@ const ContactContent = () => {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 20_000);
 
-      const res = await fetch("/api/contact", {
+      const url = `${CONTACT_API_BASE_URL ?? ""}/api/contact`;
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, message }),

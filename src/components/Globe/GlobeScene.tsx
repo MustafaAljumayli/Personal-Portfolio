@@ -2,6 +2,7 @@ import { Suspense, useRef, useEffect, useState } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { cn } from "@/lib/utils";
 import Earth from "./Earth";
 import MilkyWay from "./MilkyWay";
@@ -61,7 +62,7 @@ const CameraController = ({
 
 const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeSceneProps) => {
   const [rotationComplete, setRotationComplete] = useState(false);
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { gl } = useThree();
   const isPointerDownRef = useRef(false);
   const hasSignaledGlobeReadyRef = useRef(false);

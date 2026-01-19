@@ -9,6 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { resumeEducation, resumeExperience, resumeProfile, resumeSkillCategories, resumeSummary } from "@/data/resume";
+import { projects } from "@/data/projects";
+
+const API_BASE_URL =
+  ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+    (import.meta.env.VITE_CONTACT_API_BASE_URL as string | undefined) ??
+    "").replace(/\/+$/, "");
 
 interface BlogPost {
   id: string;
@@ -28,7 +35,7 @@ interface KnowledgeItem {
 }
 
 const Admin = () => {
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user, session, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
 
   // Blog state
@@ -87,7 +94,7 @@ const Admin = () => {
     }
 
     setIsSavingPost(true);
-    const { error } = await supabase.from("blog_posts").insert({
+    const { data: inserted, error } = await supabase.from("blog_posts").insert({
       title: newPost.title,
       slug: generateSlug(newPost.title),
       content: newPost.content,
@@ -95,7 +102,7 @@ const Admin = () => {
       author_id: user!.id,
       published: true,
       published_at: new Date().toISOString(),
-    });
+    }).select("id").single();
 
     if (error) {
       toast.error("Failed to create post");
@@ -104,6 +111,22 @@ const Admin = () => {
       setNewPost({ title: "", content: "", excerpt: "" });
       setIsCreatingPost(false);
       fetchPosts();
+
+      // Re-index published posts for RAG
+      if (inserted?.id) {
+        if (!session?.access_token) throw new Error("Missing auth session");
+        await fetch(`${API_BASE_URL}/api/rag/sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ mode: "blog", blogPostIds: [inserted.id] }),
+        }).then(async (r) => {
+          const data = await r.json().catch(() => null);
+          if (!r.ok) throw new Error(data?.error || "RAG sync failed");
+        });
+      }
     }
     setIsSavingPost(false);
   };
@@ -127,6 +150,20 @@ const Admin = () => {
       toast.success("Post updated!");
       setEditingPost(null);
       fetchPosts();
+
+      // Re-index this post
+      if (!session?.access_token) throw new Error("Missing auth session");
+      await fetch(`${API_BASE_URL}/api/rag/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ mode: "blog", blogPostIds: [editingPost.id] }),
+      }).then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(data?.error || "RAG sync failed");
+      });
     }
     setIsSavingPost(false);
   };
@@ -148,11 +185,11 @@ const Admin = () => {
     }
 
     setIsSavingKnowledge(true);
-    const { error } = await supabase.from("ai_knowledge").insert({
+    const { data: inserted, error } = await supabase.from("ai_knowledge").insert({
       type: newKnowledge.type,
       title: newKnowledge.title,
       content: newKnowledge.content,
-    });
+    }).select("id").single();
 
     if (error) {
       toast.error("Failed to add knowledge");
@@ -161,8 +198,60 @@ const Admin = () => {
       setNewKnowledge({ type: "bio", title: "", content: "" });
       setIsCreatingKnowledge(false);
       fetchKnowledge();
+
+      // Index the new knowledge item
+      if (inserted?.id) {
+        if (!session?.access_token) throw new Error("Missing auth session");
+        await fetch(`${API_BASE_URL}/api/rag/sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ mode: "knowledge", knowledgeIds: [inserted.id] }),
+        }).then(async (r) => {
+          const data = await r.json().catch(() => null);
+          if (!r.ok) throw new Error(data?.error || "RAG sync failed");
+        });
+      }
     }
     setIsSavingKnowledge(false);
+  };
+
+  const handleSyncSiteDataForRag = async () => {
+    setIsSavingKnowledge(true);
+    try {
+      const profileText = `${resumeProfile.name}\n${resumeProfile.headline}\n${resumeProfile.location}\n${resumeProfile.email}\n${resumeProfile.website}\n${resumeProfile.linkedin}\n${resumeProfile.github}\n${resumeProfile.twitter}`;
+      const resumeText =
+        `${resumeSummary}\n\nExperience:\n` +
+        resumeExperience.map((e) => `- ${e.title} @ ${e.company} (${e.period}): ${e.description}`).join("\n") +
+        `\n\nEducation:\n` +
+        resumeEducation.map((e) => `- ${e.degree} — ${e.school} (${e.period})`).join("\n") +
+        `\n\nSkills:\n` +
+        resumeSkillCategories.map((c) => `${c.title}: ${c.skills.join(", ")}`).join("\n");
+      const projectsText =
+        `Projects:\n` +
+        projects
+          .map((p) => `- ${p.title}: ${p.description} (Tech: ${p.tech.join(", ")})`)
+          .join("\n");
+
+      if (!session?.access_token) throw new Error("Missing auth session");
+      const res = await fetch(`${API_BASE_URL}/api/rag/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ mode: "seed", seed: { profileText, resumeText, projectsText } }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "RAG sync failed");
+      toast.success("RAG index updated from site data");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to sync site data");
+    } finally {
+      setIsSavingKnowledge(false);
+    }
   };
 
   const handleDeleteKnowledge = async (id: string) => {
@@ -329,6 +418,16 @@ const Admin = () => {
               <p className="text-muted-foreground text-sm">
                 Add information about yourself that the AI chatbot will use to answer questions.
               </p>
+
+              <Button
+                variant="secondary"
+                onClick={handleSyncSiteDataForRag}
+                disabled={isSavingKnowledge}
+                className="gap-2"
+              >
+                {isSavingKnowledge ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+                Sync & Reindex from Site Data
+              </Button>
 
               {isCreatingKnowledge ? (
                 <div className="glass-panel p-6 space-y-4">

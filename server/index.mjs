@@ -4,6 +4,7 @@ import nodemailer from "nodemailer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { ragChat, ragSync, requireAdminFromBearer } from "./rag.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,7 +26,66 @@ function withTimeout(promise, ms, label = "operation") {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
 }
 
+function parseAllowedOrigins() {
+  const raw = process.env.ALLOWED_ORIGINS ?? "";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = parseAllowedOrigins();
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  return next();
+});
+
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+app.post("/api/rag/chat", async (req, res) => {
+  try {
+    const result = await ragChat(req.body);
+    return res.json(result);
+  } catch (err) {
+    console.error("rag chat error:", err);
+    const msg =
+      process.env.NODE_ENV === "production"
+        ? "Failed to chat"
+        : err instanceof Error
+          ? err.message
+          : "Failed to chat";
+    return res.status(500).json({ error: msg });
+  }
+});
+
+app.post("/api/rag/sync", async (req, res) => {
+  try {
+    await requireAdminFromBearer(req);
+    const result = await ragSync(req.body);
+    return res.json(result);
+  } catch (err) {
+    console.error("rag sync error:", err);
+    const msg =
+      process.env.NODE_ENV === "production"
+        ? "Failed to sync"
+        : err instanceof Error
+          ? err.message
+          : "Failed to sync";
+    const status = msg.includes("Admin access required") || msg.includes("Missing Bearer token") ? 401 : 500;
+    return res.status(status).json({ error: msg });
+  }
+});
 
 // Create a pooled transporter once so we don't pay DNS/TLS handshake costs on every request.
 let transporter;
@@ -54,6 +114,31 @@ function getTransporter() {
   return transporter;
 }
 
+async function sendViaResend({ to, from, replyTo, subject, text }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("Missing required env var: RESEND_API_KEY");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      text,
+      reply_to: replyTo,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Resend error: ${res.status} ${body}`.trim());
+  }
+}
+
 app.post("/api/contact", async (req, res) => {
   const startedAt = Date.now();
   try {
@@ -66,19 +151,48 @@ app.post("/api/contact", async (req, res) => {
     }
     if (!email.includes("@")) return res.status(400).json({ error: "Invalid email" });
 
-    const SMTP_USER = requireEnv("SMTP_USER");
-    const CONTACT_TO_EMAIL = process.env.CONTACT_TO_EMAIL ?? SMTP_USER;
-    const CONTACT_FROM_EMAIL = process.env.CONTACT_FROM_EMAIL ?? SMTP_USER;
+    const CONTACT_TO_EMAIL = requireEnv("CONTACT_TO_EMAIL");
+    // IMPORTANT: from must be a mailbox you own/control (SPF/DKIM/DMARC). Use replyTo for the visitor.
+    // For Resend, this must be a verified sender/domain (or a Resend-provided default).
+    const CONTACT_FROM_EMAIL = requireEnv("CONTACT_FROM_EMAIL");
 
-    const mailPromise = getTransporter().sendMail({
-      // IMPORTANT: from must be a mailbox you own/control (SPF/DKIM/DMARC). Use replyTo for the visitor.
-      from: `Mustafa Portfolio <${CONTACT_FROM_EMAIL}>`,
-      to: CONTACT_TO_EMAIL,
-      replyTo: `${name} <${email}>`,
-      subject: `Mustafa's Personal Website - Message from ${name || "Someone"}`,
-      text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
-    });
-    await withTimeout(mailPromise, 25_000, "SMTP sendMail");
+    const replyTo = `${name} <${email}>`;
+    const subject = `Mustafa's Personal Website - Message from ${name || "Someone"}`;
+    const text = `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`;
+
+    // Render free tier blocks outbound SMTP (25/465/587), causing ETIMEDOUT.
+    // Prefer Resend (HTTP API) in production; keep SMTP for local/other hosts.
+    const transportMode = process.env.EMAIL_TRANSPORT ?? (process.env.RESEND_API_KEY ? "resend" : "smtp");
+
+    if (transportMode === "smtp") {
+      const SMTP_USER = requireEnv("SMTP_USER");
+      const SMTP_PASS = requireEnv("SMTP_PASS");
+      void SMTP_USER;
+      void SMTP_PASS;
+
+      const mailPromise = getTransporter().sendMail({
+        from: `Mustafa Portfolio <${CONTACT_FROM_EMAIL}>`,
+        to: CONTACT_TO_EMAIL,
+        replyTo,
+        subject,
+        text,
+      });
+      await withTimeout(mailPromise, 25_000, "SMTP sendMail");
+    } else if (transportMode === "resend") {
+      await withTimeout(
+        sendViaResend({
+          to: CONTACT_TO_EMAIL,
+          from: `Mustafa Portfolio <${CONTACT_FROM_EMAIL}>`,
+          replyTo,
+          subject,
+          text,
+        }),
+        25_000,
+        "Resend send"
+      );
+    } else {
+      throw new Error(`Unknown EMAIL_TRANSPORT: ${transportMode}`);
+    }
 
     return res.json({ ok: true, ms: Date.now() - startedAt });
   } catch (err) {

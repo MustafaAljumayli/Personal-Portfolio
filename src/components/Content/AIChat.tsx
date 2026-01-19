@@ -3,12 +3,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
+
+const API_BASE_URL =
+  ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+    (import.meta.env.VITE_CONTACT_API_BASE_URL as string | undefined) ??
+    "").replace(/\/+$/, "");
 
 const AIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -39,15 +43,23 @@ const AIChat = () => {
     setIsLoading(true);
 
     try {
-      const response = await supabase.functions.invoke("mustafa-chat", {
-        body: { messages: [...messages, userMessage] },
-      });
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 25_000);
 
-      if (response.error) throw response.error;
+      const res = await fetch(`${API_BASE_URL}/api/rag/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Request failed");
 
       const assistantMessage: Message = {
         role: "assistant",
-        content: response.data?.message || "I apologize, I couldn't process that request. Please try again.",
+        content: data?.message || "I apologize, I couldn't process that request. Please try again.",
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
@@ -56,7 +68,12 @@ const AIChat = () => {
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, I encountered an error. Please try again later.",
+          content:
+            error instanceof Error && error.name === "AbortError"
+              ? "That took too long — please try again."
+              : error instanceof Error
+                ? error.message
+                : "Sorry, I encountered an error. Please try again later.",
         },
       ]);
     } finally {
@@ -93,11 +110,10 @@ const AIChat = () => {
               className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  message.role === "user"
-                    ? "bg-primary/20"
-                    : "bg-gradient-to-br from-primary/50 to-accent/50"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.role === "user"
+                  ? "bg-primary/20"
+                  : "bg-gradient-to-br from-primary/50 to-accent/50"
+                  }`}
               >
                 {message.role === "user" ? (
                   <User className="w-4 h-4 text-primary" />
@@ -106,11 +122,10 @@ const AIChat = () => {
                 )}
               </div>
               <div
-                className={`max-w-[80%] p-3 rounded-lg ${
-                  message.role === "user"
-                    ? "bg-primary/20 text-foreground"
-                    : "bg-secondary/50 text-foreground"
-                }`}
+                className={`max-w-[80%] p-3 rounded-lg ${message.role === "user"
+                  ? "bg-primary/20 text-foreground"
+                  : "bg-secondary/50 text-foreground"
+                  }`}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
