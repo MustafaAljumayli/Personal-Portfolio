@@ -25,11 +25,16 @@ const ContactContent = () => {
     setIsSubmitting(true);
 
     try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 20_000);
+
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, message }),
+        signal: controller.signal,
       });
+      clearTimeout(t);
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -42,7 +47,12 @@ const ContactContent = () => {
       setMessage("");
     } catch (err) {
       console.error("Contact form error:", err);
-      const msg = err instanceof Error ? err.message : "Couldn't send right now. Please try again in a moment.";
+      const msg =
+        err instanceof Error && err.name === "AbortError"
+          ? "Sending took too long — please try again."
+          : err instanceof Error
+            ? err.message
+            : "Couldn't send right now. Please try again in a moment.";
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
