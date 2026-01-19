@@ -31,9 +31,6 @@ const Index = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
-      {/* Star field background (render after globe is ready to avoid "stars+nav, no earth" flash) */}
-      {globeReady ? <div className="star-field" /> : null}
-
       {/* 3D Globe */}
       <GlobeScene
         activeSection={activeSection}

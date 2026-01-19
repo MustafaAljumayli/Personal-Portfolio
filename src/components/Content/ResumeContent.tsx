@@ -1,42 +1,15 @@
 import { motion } from "framer-motion";
 import { Download, Briefcase, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const experience = [
-  {
-    title: "Senior Software Engineer",
-    company: "Tech Corp",
-    period: "2022 - Present",
-    description: "Leading frontend architecture and mentoring junior developers.",
-  },
-  {
-    title: "Software Engineer",
-    company: "StartupXYZ",
-    period: "2020 - 2022",
-    description: "Built scalable web applications serving millions of users.",
-  },
-  {
-    title: "Junior Developer",
-    company: "Agency Inc",
-    period: "2019 - 2020",
-    description: "Developed client websites and e-commerce solutions.",
-  },
-];
-
-const education = [
-  {
-    degree: "M.S. Computer Science",
-    school: "Stanford University",
-    period: "2017 - 2019",
-  },
-  {
-    degree: "B.S. Software Engineering",
-    school: "MIT",
-    period: "2013 - 2017",
-  },
-];
+import { resumeEducation, resumeExperience } from "@/data/resume";
 
 const ResumeContent = () => {
+  const handleDownloadPdf = () => {
+    // Reliable flow: open an internal print-friendly route in a new tab.
+    // The page includes a button to Print / Save as PDF (auto-print is best-effort).
+    window.open("/resume-template?autoprint=1", "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -51,7 +24,7 @@ const ResumeContent = () => {
           </h2>
           <p className="text-muted-foreground">Experience and education</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadPdf}>
           <Download className="w-4 h-4" />
           PDF
         </Button>
@@ -68,7 +41,7 @@ const ResumeContent = () => {
           Experience
         </h3>
         <div className="space-y-4 border-l-2 border-border/50 pl-4">
-          {experience.map((job, index) => (
+          {resumeExperience.map((job, index) => (
             <motion.div
               key={job.title}
               initial={{ opacity: 0, x: -10 }}
@@ -97,7 +70,7 @@ const ResumeContent = () => {
           Education
         </h3>
         <div className="space-y-3 border-l-2 border-border/50 pl-4">
-          {education.map((edu, index) => (
+          {resumeEducation.map((edu, index) => (
             <motion.div
               key={edu.degree}
               initial={{ opacity: 0, x: -10 }}

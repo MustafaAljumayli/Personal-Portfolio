@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-
-const CONTACT_FORM_ENDPOINT = import.meta.env.VITE_CONTACT_FORM_ENDPOINT as string | undefined;
+import { resumeProfile } from "@/data/resume";
 
 const socialLinks = [
-  { icon: Mail, label: "Email", href: "mailto:mustafa@aljumayli.com", value: "mustafa@aljumayli.com" },
-  { icon: Linkedin, label: "LinkedIn", href: "https://linkedin.com/in/mustafa-aljumayli", value: "/in/mustafa-aljumayli" },
-  { icon: Github, label: "GitHub", href: "https://github.com/id-mustafa", value: "@id-mustafa" },
-  { icon: Twitter, label: "Twitter", href: "https://twitter.com/mustafa", value: "@mustafa" },
+  { icon: Mail, label: "Email", href: `mailto:${resumeProfile.email}`, value: resumeProfile.email },
+  { icon: Linkedin, label: "LinkedIn", href: `https://${resumeProfile.linkedin}`, value: "@mustafa-aljumayli" },
+  { icon: Github, label: "GitHub", href: `https://${resumeProfile.github}`, value: "@id-mustafa" },
+  { icon: Twitter, label: "Twitter", href: `https://${resumeProfile.twitter}`, value: "@Mustafa" },
 ];
 
 const ContactContent = () => {
@@ -21,42 +20,20 @@ const ContactContent = () => {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const mailtoFallback = () => {
-    const subject = encodeURIComponent(`Portfolio contact from ${name || "someone"}`);
-    const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
-    );
-    window.location.href = `mailto:mustafa@aljumayli.com?subject=${subject}&body=${body}`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      if (!CONTACT_FORM_ENDPOINT) {
-        toast.message("Opening your email client…");
-        mailtoFallback();
-        return;
-      }
-
-      const res = await fetch(CONTACT_FORM_ENDPOINT, {
+      const res = await fetch("/api/contact", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          message,
-          // Formspree uses "replyto" / "_replyto" patterns depending on setup; this is safe to include.
-          _replyto: email,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
       });
 
       if (!res.ok) {
-        throw new Error(await res.text());
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Request failed");
       }
 
       toast.success("Message sent! I'll get back to you soon.");
@@ -65,8 +42,8 @@ const ContactContent = () => {
       setMessage("");
     } catch (err) {
       console.error("Contact form error:", err);
-      toast.error("Couldn't send right now — opening your email client instead.");
-      mailtoFallback();
+      const msg = err instanceof Error ? err.message : "Couldn't send right now. Please try again in a moment.";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

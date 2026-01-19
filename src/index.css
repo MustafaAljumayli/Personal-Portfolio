@@ -130,7 +130,7 @@
   }
 
   .text-gradient-gt {
-    background-image: linear-gradient(135deg, #b3a369 20%, #857437 80%);
+    background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
@@ -157,26 +157,25 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
-    background-image:
-      radial-gradient(2px 2px at 20px 30px, white, transparent),
-      radial-gradient(2px 2px at 40px 70px, rgba(255, 255, 255, 0.8), transparent),
-      radial-gradient(1px 1px at 90px 40px, white, transparent),
-      radial-gradient(2px 2px at 160px 120px, rgba(255, 255, 255, 0.9), transparent),
-      radial-gradient(1px 1px at 230px 80px, white, transparent),
-      radial-gradient(2px 2px at 300px 150px, rgba(255, 255, 255, 0.7), transparent),
-      radial-gradient(1px 1px at 400px 60px, white, transparent),
-      radial-gradient(2px 2px at 500px 200px, rgba(255, 255, 255, 0.8), transparent);
-    background-size: 550px 550px;
-    animation: twinkle 8s ease-in-out infinite alternate;
+    background-image: url('/8k_stars_milky_way.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.65;
+    filter: saturate(1.1) contrast(1.05);
+    transform: scale(1.05);
+    animation: milkyway-drift 40s ease-in-out infinite alternate;
   }
 
-  @keyframes twinkle {
+  @keyframes milkyway-drift {
     0% {
-      opacity: 0.7;
+      transform: scale(1.05) translate3d(0, 0, 0);
+      opacity: 0.6;
     }
 
     100% {
-      opacity: 1;
+      transform: scale(1.1) translate3d(-1.5%, -1.5%, 0);
+      opacity: 0.75;
     }
   }
 

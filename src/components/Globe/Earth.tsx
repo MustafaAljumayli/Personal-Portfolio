@@ -125,7 +125,7 @@ const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProp
           color="#ffffff"
           alphaMap={cloudsAlphaTexture}
           transparent
-          opacity={0.6}
+          opacity={1.5}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />

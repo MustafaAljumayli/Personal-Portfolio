@@ -4,7 +4,7 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 import Earth from "./Earth";
-import Stars from "./Stars";
+import MilkyWay from "./MilkyWay";
 
 interface GlobeSceneProps {
   activeSection: string | null;
@@ -149,7 +149,7 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
       <ambientLight intensity={0.35} />
       <directionalLight position={[5, 3, 5]} intensity={7.1} />
       <pointLight position={[-10, -10, -10]} intensity={10} color="#4da6ff" />
-      <Stars />
+      <MilkyWay />
       <Earth
         isAutoRotating={!activeSection || activeSection === "blog"}
         targetRotation={targetRotation}

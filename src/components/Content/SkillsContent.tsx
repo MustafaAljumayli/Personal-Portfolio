@@ -1,23 +1,5 @@
 import { motion } from "framer-motion";
-
-const skillCategories = [
-  {
-    title: "Frontend",
-    skills: ["React", "TypeScript", "Next.js", "Tailwind CSS", "Three.js"],
-  },
-  {
-    title: "Backend",
-    skills: ["Node.js", "Python", "PostgreSQL", "GraphQL", "Redis"],
-  },
-  {
-    title: "Tools & DevOps",
-    skills: ["Git", "Docker", "AWS", "CI/CD", "Kubernetes"],
-  },
-  {
-    title: "Other",
-    skills: ["UI/UX Design", "Agile", "System Design", "API Design"],
-  },
-];
+import { resumeSkillCategories } from "@/data/resume";
 
 const SkillsContent = () => {
   return (
@@ -34,7 +16,7 @@ const SkillsContent = () => {
       </motion.div>
 
       <div className="grid gap-4">
-        {skillCategories.map((category, categoryIndex) => (
+        {resumeSkillCategories.map((category, categoryIndex) => (
           <motion.div
             key={category.title}
             initial={{ opacity: 0, y: 20 }}

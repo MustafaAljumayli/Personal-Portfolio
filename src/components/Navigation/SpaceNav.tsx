@@ -59,7 +59,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300
+                    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-10
                     ${isActive
                       ? "bg-primary/20 text-primary glow-text"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
