@@ -1,11 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import AboutContent from "./AboutContent";
-import WorkContent from "./WorkContent";
 import SkillsContent from "./SkillsContent";
 import ContactContent from "./ContactContent";
 import ResumeContent from "./ResumeContent";
 import AIChat from "./AIChat";
+import ProjectsContent from "./ProjectsContent";
 
 interface ContentPanelProps {
   activeSection: string | null;
@@ -20,8 +20,8 @@ const ContentPanel = ({ activeSection, onClose, showContent }: ContentPanelProps
     switch (activeSection) {
       case "about":
         return <AboutContent />;
-      case "work":
-        return <WorkContent />;
+      case "projects":
+        return <ProjectsContent />;
       case "skills":
         return <SkillsContent />;
       case "contact":

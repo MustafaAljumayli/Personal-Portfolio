@@ -8,17 +8,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
 
 const emailSchema = z.string().trim().email("Please enter a valid email address");
-const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+const passwordSchema = z.string().min(1, "Password is required");
 
 const Auth = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn } = useAuth();
   const navigate = useNavigate();
 
   const normalizeEmail = (value: string) => value.trim().replace(/\s+/g, "");
@@ -42,10 +40,6 @@ const Auth = () => {
       newErrors.password = passwordResult.error.errors[0].message;
     }
 
-    if (isSignUp && password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -57,17 +51,10 @@ const Auth = () => {
     setIsSubmitting(true);
     const normalizedEmail = normalizeEmail(email);
     setEmail(normalizedEmail);
-    
-    if (isSignUp) {
-      const { error } = await signUp(normalizedEmail, password);
-      if (!error) {
-        navigate("/");
-      }
-    } else {
-      const { error } = await signIn(normalizedEmail, password);
-      if (!error) {
-        navigate("/");
-      }
+
+    const { error } = await signIn(normalizedEmail, password);
+    if (!error) {
+      navigate("/");
     }
 
     setIsSubmitting(false);
@@ -91,17 +78,10 @@ const Auth = () => {
         </button>
 
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl font-bold">
-            {isSignUp ? "Create Account" : "Welcome Back"}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {isSignUp
-              ? "Sign up to access admin features"
-              : "Sign in to your account"}
-          </p>
+          <h1 className="font-display text-3xl font-bold">Welcome Back</h1>
+          <p className="text-muted-foreground mt-2">Admin sign in</p>
         </div>
 
-        {/* Disable native browser validation so we control email validation/normalization. */}
         <form noValidate onSubmit={handleSubmit} className="space-y-4">
           <div>
             <div className="relative">
@@ -137,24 +117,6 @@ const Auth = () => {
             )}
           </div>
 
-          {isSignUp && (
-            <div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 bg-secondary/30 border-border/50"
-                />
-              </div>
-              {errors.confirmPassword && (
-                <p className="text-sm text-destructive mt-1">{errors.confirmPassword}</p>
-              )}
-            </div>
-          )}
-
           <Button
             type="submit"
             disabled={isSubmitting}
@@ -162,27 +124,11 @@ const Auth = () => {
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
-            ) : isSignUp ? (
-              "Create Account"
             ) : (
               "Sign In"
             )}
           </Button>
         </form>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setErrors({});
-            }}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {isSignUp
-              ? "Already have an account? Sign in"
-              : "Don't have an account? Sign up"}
-          </button>
-        </div>
       </motion.div>
     </div>
   );

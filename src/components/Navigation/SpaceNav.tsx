@@ -11,7 +11,7 @@ interface SpaceNavProps {
 
 const navItems = [
   { id: "about", label: "About", icon: User },
-  { id: "work", label: "Work", icon: Briefcase },
+  { id: "projects", label: "Projects", icon: Briefcase },
   { id: "skills", label: "Skills", icon: Code },
   { id: "contact", label: "Contact", icon: Mail },
   { id: "resume", label: "Resume", icon: FileText },

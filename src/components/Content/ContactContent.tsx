@@ -1,22 +1,22 @@
 import { motion } from "framer-motion";
 import { Mail, Linkedin, Github, Twitter, Send } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { resumeProfile } from "@/data/resume";
-
-const CONTACT_API_BASE_URL = (import.meta.env.VITE_CONTACT_API_BASE_URL as string | undefined)?.replace(/\/+$/, "");
-
-const socialLinks = [
-  { icon: Mail, label: "Email", href: `mailto:${resumeProfile.email}`, value: resumeProfile.email },
-  { icon: Linkedin, label: "LinkedIn", href: `https://${resumeProfile.linkedin}`, value: "@mustafa-aljumayli" },
-  { icon: Github, label: "GitHub", href: `https://${resumeProfile.github}`, value: "@id-mustafa" },
-  { icon: Twitter, label: "Twitter", href: `https://${resumeProfile.twitter}`, value: "@Mustafa" },
-];
+import { API_BASE_URL } from "@/lib/api";
+import { useResumeData } from "@/hooks/useResumeData";
 
 const ContactContent = () => {
+  const { profile } = useResumeData();
+
+  const socialLinks = useMemo(() => [
+    { icon: Mail, label: "Email", href: `mailto:${profile.email}`, value: profile.email },
+    { icon: Linkedin, label: "LinkedIn", href: `https://${profile.linkedin}`, value: profile.linkedin.split("/").pop() ? `@${profile.linkedin.split("/").pop()}` : "" },
+    { icon: Github, label: "GitHub", href: `https://${profile.github}`, value: profile.github.split("/").pop() ? `@${profile.github.split("/").pop()}` : "" },
+    { icon: Twitter, label: "Twitter", href: `https://${profile.twitter}`, value: profile.twitter.split("/").pop() ? `@${profile.twitter.split("/").pop()}` : "" },
+  ], [profile]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -28,10 +28,9 @@ const ContactContent = () => {
 
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 20_000);
+      const t = setTimeout(() => controller.abort(), 25_000);
 
-      const url = `${CONTACT_API_BASE_URL ?? ""}/api/contact`;
-      const res = await fetch(url, {
+      const res = await fetch(`${API_BASE_URL}/api/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, message }),
@@ -39,8 +38,12 @@ const ContactContent = () => {
       });
       clearTimeout(t);
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
+        if (res.status === 429 && data?.retry_after_seconds) {
+          throw new Error(`Too many messages. Please try again in ${data.retry_after_seconds}s.`);
+        }
         throw new Error(data?.error || "Request failed");
       }
 

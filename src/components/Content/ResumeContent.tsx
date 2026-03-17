@@ -1,14 +1,17 @@
 import { motion } from "framer-motion";
-import { Download, Briefcase, GraduationCap } from "lucide-react";
+import { Download, Briefcase, GraduationCap, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { resumeEducation, resumeExperience } from "@/data/resume";
+import { API_BASE_URL } from "@/lib/api";
+import { useResumeData } from "@/hooks/useResumeData";
 
 const ResumeContent = () => {
+  const { experience, education } = useResumeData();
   const handleDownloadPdf = () => {
-    // Reliable flow: open an internal print-friendly route in a new tab.
-    // The page includes a button to Print / Save as PDF (auto-print is best-effort).
-    window.open("/resume-template?autoprint=1", "_blank", "noopener,noreferrer");
+    window.open(`${API_BASE_URL}/api/resume/download`, "_blank", "noopener,noreferrer");
   };
+
+  const getBullets = (job: (typeof experience)[number]) =>
+    job.bullets?.length ? job.bullets : job.description ? [job.description] : [];
 
   return (
     <div className="space-y-6">
@@ -41,21 +44,32 @@ const ResumeContent = () => {
           Experience
         </h3>
         <div className="space-y-4 border-l-2 border-border/50 pl-4">
-          {resumeExperience.map((job, index) => (
-            <motion.div
-              key={job.title}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + index * 0.1 }}
-              className="relative"
-            >
-              <div className="absolute -left-[1.35rem] top-1.5 w-2.5 h-2.5 rounded-full bg-primary" />
-              <div className="text-sm text-muted-foreground">{job.period}</div>
-              <h4 className="font-semibold">{job.title}</h4>
-              <div className="text-sm text-primary">{job.company}</div>
-              <p className="text-sm text-muted-foreground mt-1">{job.description}</p>
-            </motion.div>
-          ))}
+          {experience.map((job, index) => {
+            const bullets = getBullets(job);
+            return (
+              <motion.div
+                key={`${job.title}-${job.company}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + index * 0.1 }}
+                className="relative"
+              >
+                <div className="absolute -left-[1.35rem] top-1.5 w-2.5 h-2.5 rounded-full bg-primary" />
+                <div className="text-sm text-muted-foreground">{job.period}</div>
+                <h4 className="font-semibold">{job.title}</h4>
+                <div className="text-sm text-primary">{job.company}</div>
+                {bullets.length === 1 ? (
+                  <p className="text-sm text-muted-foreground mt-1">{bullets[0]}</p>
+                ) : bullets.length > 1 ? (
+                  <ul className="list-disc list-outside ml-4 mt-1 space-y-0.5">
+                    {bullets.map((b, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">{b}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </motion.div>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -70,7 +84,7 @@ const ResumeContent = () => {
           Education
         </h3>
         <div className="space-y-3 border-l-2 border-border/50 pl-4">
-          {resumeEducation.map((edu, index) => (
+          {education.map((edu, index) => (
             <motion.div
               key={edu.degree}
               initial={{ opacity: 0, x: -10 }}
@@ -82,6 +96,19 @@ const ResumeContent = () => {
               <div className="text-sm text-muted-foreground">{edu.period}</div>
               <h4 className="font-semibold">{edu.degree}</h4>
               <div className="text-sm text-accent">{edu.school}</div>
+              {edu.gpa && (
+                <div className="text-sm text-muted-foreground mt-0.5">GPA: {edu.gpa}</div>
+              )}
+              {edu.awards && edu.awards.length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {edu.awards.map((award, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-sm text-yellow-500/90">
+                      <Award className="w-3.5 h-3.5 flex-shrink-0" />
+                      {award}
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           ))}
         </div>

@@ -1,4 +1,4 @@
-import { Suspense, useRef, useEffect, useState } from "react";
+import { Suspense, useRef, useEffect, useState, useCallback } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -14,10 +14,11 @@ interface GlobeSceneProps {
   cameraPosition?: { x: number; y: number; z: number };
 }
 
-// Globe location coordinates for each section
+const DEFAULT_CAMERA = new THREE.Vector3(0, 0, 6);
+
 const sectionCoordinates: Record<string, { rotation: { x: number; y: number }; camera: { x: number; y: number; z: number } }> = {
   about: { rotation: { x: 0.2, y: -0.5 }, camera: { x: 2, y: 1, z: 4 } },
-  work: { rotation: { x: 0, y: 0.8 }, camera: { x: -2, y: 0.5, z: 4 } },
+  projects: { rotation: { x: 0, y: 0.8 }, camera: { x: -2, y: 0.5, z: 4 } },
   skills: { rotation: { x: -0.3, y: 2.2 }, camera: { x: 1, y: -1, z: 4 } },
   contact: { rotation: { x: 0.4, y: 3.5 }, camera: { x: -1, y: 1.5, z: 4 } },
   resume: { rotation: { x: -0.2, y: 4.8 }, camera: { x: 0, y: -0.5, z: 4.5 } },
@@ -27,33 +28,42 @@ const sectionCoordinates: Record<string, { rotation: { x: number; y: number }; c
 
 const CameraController = ({
   activeSection,
-  onReady
+  onArrived,
 }: {
   activeSection: string | null;
-  onReady: () => void;
+  onArrived: (section: string | null) => void;
 }) => {
   const { camera } = useThree();
-  const targetPosition = useRef(new THREE.Vector3(0, 0, 6));
-  const hasReachedTarget = useRef(false);
+  const targetPosition = useRef(new THREE.Vector3().copy(DEFAULT_CAMERA));
+  const arrived = useRef(true);
+  const prevSection = useRef<string | null>(null);
+  const targetSection = useRef<string | null>(null);
 
   useEffect(() => {
-    hasReachedTarget.current = false;
+    const prev = prevSection.current;
+    prevSection.current = activeSection;
+
     if (activeSection && sectionCoordinates[activeSection]) {
       const { camera: cam } = sectionCoordinates[activeSection];
       targetPosition.current.set(cam.x, cam.y, cam.z);
-    } else {
-      targetPosition.current.set(0, 0, 6);
+      arrived.current = false;
+      targetSection.current = activeSection;
+    } else if (prev) {
+      targetPosition.current.copy(DEFAULT_CAMERA);
+      arrived.current = false;
+      targetSection.current = null;
     }
   }, [activeSection]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
+    if (arrived.current) return;
+
     camera.position.lerp(targetPosition.current, delta * 2);
     camera.lookAt(0, 0, 0);
 
-    const distance = camera.position.distanceTo(targetPosition.current);
-    if (distance < 0.1 && !hasReachedTarget.current) {
-      hasReachedTarget.current = true;
-      onReady();
+    if (camera.position.distanceTo(targetPosition.current) < 0.1) {
+      arrived.current = true;
+      onArrived(targetSection.current);
     }
   });
 
@@ -62,14 +72,35 @@ const CameraController = ({
 
 const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeSceneProps) => {
   const [rotationComplete, setRotationComplete] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { gl } = useThree();
   const isPointerDownRef = useRef(false);
   const hasSignaledGlobeReadyRef = useRef(false);
+  const prevSectionRef = useRef<string | null>(null);
+
+  // Detect when we're transitioning from a section back to null.
+  // Check synchronously during render so there's no one-frame gap where controls re-enable.
+  const justDeactivated = prevSectionRef.current !== null && activeSection === null;
+  const controlsLocked = !!activeSection || isReturning || justDeactivated;
 
   const targetRotation = activeSection && sectionCoordinates[activeSection]
     ? sectionCoordinates[activeSection].rotation
     : null;
+
+  useEffect(() => {
+    const prev = prevSectionRef.current;
+    prevSectionRef.current = activeSection;
+    if (prev && !activeSection) {
+      setIsReturning(true);
+    }
+  }, [activeSection]);
+
+  const handleCameraArrived = useCallback((section: string | null) => {
+    if (!section) {
+      setIsReturning(false);
+    }
+  }, []);
 
   const handleRotationComplete = () => {
     setRotationComplete(true);
@@ -85,16 +116,12 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
     }
   }, [rotationComplete, onSectionReady]);
 
-  // This component only mounts after Suspense resolves (i.e., textures are loaded).
-  // Signal the parent so it can render nav/background AFTER the globe is ready.
   useEffect(() => {
     if (hasSignaledGlobeReadyRef.current) return;
     hasSignaledGlobeReadyRef.current = true;
     onGlobeReady?.();
   }, [onGlobeReady]);
 
-  // Prevent trackpad "wheel" dolly from firing while actively dragging to rotate.
-  // This keeps 2-finger scroll zoom, but avoids accidental zoom during click+drag.
   useEffect(() => {
     const el = gl.domElement;
 
@@ -123,14 +150,12 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
 
   return (
     <>
-      {/* Only drive the camera when a section is active. When free-rotating with OrbitControls,
-          CameraController would fight user input and can feel like unintended zooming. */}
-      {activeSection ? <CameraController activeSection={activeSection} onReady={() => { }} /> : null}
+      <CameraController activeSection={activeSection} onArrived={handleCameraArrived} />
       <OrbitControls
         ref={controlsRef}
-        enableZoom={!activeSection}
+        enableZoom={!controlsLocked}
         enablePan={false}
-        enableRotate={!activeSection}
+        enableRotate={!controlsLocked}
         rotateSpeed={0.5}
         zoomSpeed={0.5}
         minDistance={3}
@@ -152,7 +177,7 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
       <pointLight position={[-10, -10, -10]} intensity={10} color="#4da6ff" />
       <MilkyWay />
       <Earth
-        isAutoRotating={!activeSection || activeSection === "blog"}
+        isAutoRotating={!controlsLocked}
         targetRotation={targetRotation}
         onRotationComplete={handleRotationComplete}
       />

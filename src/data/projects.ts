@@ -1,9 +1,10 @@
 export interface Project {
   title: string;
-  description: string;
+  description?: string;
+  bullets?: string[];
   tech: string[];
-  githubUrl?: string;
-  liveUrl?: string;
+  githubUrl?: string | null;
+  liveUrl?: string | null;
 }
 
 export const projects: Project[] = [
@@ -28,5 +29,4 @@ export const projects: Project[] = [
     githubUrl: "#",
     liveUrl: "#",
   },
-  // Add more projects here as needed
 ];

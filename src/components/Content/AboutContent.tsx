@@ -1,7 +1,14 @@
 import { motion } from "framer-motion";
-import { MapPin, Calendar, Coffee } from "lucide-react";
+import { MapPin, Calendar, Coffee, Star, Heart, Zap, Globe, Award, Lightbulb } from "lucide-react";
+import { useResumeData } from "@/hooks/useResumeData";
+
+const iconMap: Record<string, React.FC<{ className?: string }>> = {
+  MapPin, Calendar, Coffee, Star, Heart, Zap, Globe, Award, Lightbulb,
+};
 
 const AboutContent = () => {
+  const { about } = useResumeData();
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -12,7 +19,7 @@ const AboutContent = () => {
         <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
           About <span className="text-gradient-unc">Me</span>
         </h2>
-        <p className="text-muted-foreground">Software Engineer & AI Researcher</p>
+        <p className="text-muted-foreground">{about.subtitle}</p>
       </motion.div>
 
       <motion.div
@@ -21,18 +28,15 @@ const AboutContent = () => {
         transition={{ delay: 0.2 }}
         className="flex flex-wrap gap-4 text-sm text-muted-foreground"
       >
-        <span className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-primary" />
-          Chapel Hill, NC
-        </span>
-        <span className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-primary" />
-          2 Years Experience
-        </span>
-        <span className="flex items-center gap-2">
-          <Coffee className="w-4 h-4 text-primary" />
-          Coffee Enthusiast
-        </span>
+        {about.tags.map((tag, i) => {
+          const Icon = iconMap[tag.icon] ?? Star;
+          return (
+            <span key={i} className="flex items-center gap-2">
+              <Icon className="w-4 h-4 text-primary" />
+              {tag.text}
+            </span>
+          );
+        })}
       </motion.div>
 
       <motion.div
@@ -41,18 +45,9 @@ const AboutContent = () => {
         transition={{ delay: 0.3 }}
         className="space-y-4 text-foreground/90"
       >
-        <p>
-          I'm a passionate software engineer with a love for building large-scale performative systems.
-          My journey in tech started with curiosity about how things work, and it's evolved into a career focused on creating
-          impactful technology. I'm currently a software engineer at Deutsche Bank and Graduate AI Researcher at Georgia Tech.
-        </p>
-        <p>
-          When I'm not coding, you can find me exploring new technologies,
-          contributing to open-source projects, or sharing knowledge with the
-          developer/student community. I believe in writing clean, maintainable code
-          that makes a difference, and I'm always looking for new challenges and opportunities to grow.
-          I'm also really interested in startups, having been a previous founder myself!
-        </p>
+        {about.paragraphs.map((p, i) => (
+          <p key={i}>{p}</p>
+        ))}
       </motion.div>
 
       <motion.div
@@ -61,11 +56,7 @@ const AboutContent = () => {
         transition={{ delay: 0.4 }}
         className="grid grid-cols-3 gap-4 pt-4"
       >
-        {[
-          { number: "20+", label: "Projects" },
-          { number: "10+", label: "Clients" },
-          { number: "2+", label: "Years" },
-        ].map((stat, index) => (
+        {about.stats.map((stat, index) => (
           <div key={index} className="text-center p-4 rounded-lg bg-secondary/30">
             <div className="font-display text-2xl font-bold text-primary">{stat.number}</div>
             <div className="text-sm text-muted-foreground">{stat.label}</div>

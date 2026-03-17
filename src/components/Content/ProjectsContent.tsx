@@ -1,9 +1,13 @@
 import { motion } from "framer-motion";
 import { ExternalLink, Github } from "lucide-react";
-import { Link } from "react-router-dom";
-import { projects } from "@/data/projects";
+import { useResumeData } from "@/hooks/useResumeData";
 
-const WorkContent = () => {
+const ProjectsContent = () => {
+  const { projects } = useResumeData();
+
+  const getDescription = (p: (typeof projects)[number]) =>
+    p.description || (p.bullets?.length ? p.bullets[0] : "");
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -12,13 +16,13 @@ const WorkContent = () => {
         transition={{ delay: 0.1 }}
       >
         <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
-          My <span className="text-gradient-unc">Work</span>
+          My <span className="text-gradient-unc">Projects</span>
         </h2>
         <p className="text-muted-foreground">Featured projects and creations</p>
       </motion.div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {projects.slice(0, 4).map((project, index) => (
+        {projects.map((project, index) => (
           <motion.div
             key={project.title}
             initial={{ opacity: 0, y: 20 }}
@@ -34,7 +38,7 @@ const WorkContent = () => {
                     {project.title}
                   </h3>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    {project.githubUrl && (
+                    {project.githubUrl && project.githubUrl !== "#" && (
                       <a
                         className="p-1 hover:text-primary"
                         href={project.githubUrl}
@@ -45,7 +49,7 @@ const WorkContent = () => {
                         <Github className="w-4 h-4" />
                       </a>
                     )}
-                    {project.liveUrl && (
+                    {project.liveUrl && project.liveUrl !== "#" && (
                       <a
                         className="p-1 hover:text-primary"
                         href={project.liveUrl}
@@ -59,34 +63,35 @@ const WorkContent = () => {
                   </div>
                 </div>
 
-                <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+                {project.bullets && project.bullets.length > 1 ? (
+                  <ul className="list-disc list-outside ml-4 mt-1 space-y-0.5">
+                    {project.bullets.map((b, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">{b}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">{getDescription(project)}</p>
+                )}
 
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {project.tech.map((tech) => (
-                    <span
-                      key={tech}
-                      className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
+                {project.tech.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {project.tech.map((tech) => (
+                      <span
+                        key={tech}
+                        className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
         ))}
       </div>
-
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-        <Link
-          to="/projects"
-          className="block w-full py-3 text-center text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
-        >
-          View All Projects →
-        </Link>
-      </motion.div>
     </div>
   );
 };
 
-export default WorkContent;
+export default ProjectsContent;

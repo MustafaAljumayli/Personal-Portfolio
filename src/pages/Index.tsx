@@ -3,8 +3,10 @@ import GlobeScene from "@/components/Globe/GlobeScene";
 import SpaceNav from "@/components/Navigation/SpaceNav";
 import ContentPanel from "@/components/Content/ContentPanel";
 import BlogOverlay from "@/components/Blog/BlogOverlay";
+import { useResumeData } from "@/hooks/useResumeData";
 
 const Index = () => {
+  const { settings } = useResumeData();
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [showContent, setShowContent] = useState(false);
   const [globeReady, setGlobeReady] = useState(false);
@@ -67,10 +69,10 @@ const Index = () => {
       {globeReady && !activeSection && (
         <div className="fixed bottom-20 left-0 right-0 flex flex-col items-center pointer-events-none">
           <h1 className="font-display text-4xl md:text-6xl font-bold text-center glow-text">
-            <span className="text-gradient-unc">Mustafa Aljumayli</span>
+            <span className="text-gradient-unc">{settings.name}</span>
           </h1>
           <p className="text-muted-foreground mt-2 text-center">
-            Software Engineer • AI Researcher • UNC Chapel Hill Alum • Georgia Tech AI Master's Student
+            {settings.headline}
           </p>
           <p className="text-muted-foreground/60 text-sm mt-4">
             Click and drag to explore • Select a menu item to learn more

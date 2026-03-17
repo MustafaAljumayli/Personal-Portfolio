@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
-import { resumeSkillCategories } from "@/data/resume";
+import { useResumeData } from "@/hooks/useResumeData";
 
 const SkillsContent = () => {
+  const { skillCategories } = useResumeData();
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -16,7 +18,7 @@ const SkillsContent = () => {
       </motion.div>
 
       <div className="grid gap-4">
-        {resumeSkillCategories.map((category, categoryIndex) => (
+        {skillCategories.map((category, categoryIndex) => (
           <motion.div
             key={category.title}
             initial={{ opacity: 0, y: 20 }}

@@ -3,22 +3,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { API_BASE_URL } from "@/lib/api";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-const API_BASE_URL =
-  ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-    (import.meta.env.VITE_CONTACT_API_BASE_URL as string | undefined) ??
-    "").replace(/\/+$/, "");
-
 const AIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hi! I'm Mustafa.ai 👋 Ask me anything about Mustafa's experience, skills, projects, or background. I'm here to help!",
+      content: "Hey! I'm Mustafa — well, an AI version of me. Ask me anything about my experience, skills, projects, or background. I'm here to chat!",
     },
   ]);
   const [input, setInput] = useState("");
@@ -94,7 +90,7 @@ const AIChat = () => {
         </div>
         <div>
           <h2 className="font-display text-xl font-bold">Mustafa.ai</h2>
-          <p className="text-sm text-muted-foreground">Your personal AI assistant</p>
+          <p className="text-sm text-muted-foreground">I'm so happy to chat with you!</p>
         </div>
       </motion.div>
 
@@ -157,7 +153,7 @@ const AIChat = () => {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything about Mustafa..."
+            placeholder="Ask me anything about me..."
             className="bg-secondary/30 border-border/50"
             disabled={isLoading}
           />
