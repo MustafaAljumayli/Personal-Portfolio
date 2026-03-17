@@ -121,24 +121,43 @@ async function fetchResumeData(): Promise<Omit<ResumeData, "isLoading"> | null> 
   }
 }
 
+const CONTENT_UPDATED_EVENT = "content-updated";
+
 export function useResumeData(): ResumeData {
   const [data, setData] = useState<Omit<ResumeData, "isLoading">>(cachedData ?? staticData);
   const [isLoading, setIsLoading] = useState(!cachedData);
 
   useEffect(() => {
-    if (cachedData) return;
+    let cancelled = false;
 
-    if (!fetchPromise) {
-      fetchPromise = fetchResumeData();
-    }
-
-    fetchPromise.then((result) => {
-      if (result) {
-        cachedData = result;
-        setData(result);
+    const doFetch = () => {
+      if (!fetchPromise) {
+        fetchPromise = fetchResumeData();
       }
-      setIsLoading(false);
-    });
+      fetchPromise.then((result) => {
+        if (cancelled) return;
+        if (result) {
+          cachedData = result;
+          setData(result);
+        }
+        setIsLoading(false);
+      });
+    };
+
+    if (!cachedData) doFetch();
+
+    const onUpdate = () => {
+      cachedData = null;
+      fetchPromise = null;
+      setIsLoading(true);
+      doFetch();
+    };
+
+    window.addEventListener(CONTENT_UPDATED_EVENT, onUpdate);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(CONTENT_UPDATED_EVENT, onUpdate);
+    };
   }, []);
 
   return { ...data, isLoading };
@@ -147,4 +166,9 @@ export function useResumeData(): ResumeData {
 export function invalidateResumeCache() {
   cachedData = null;
   fetchPromise = null;
+}
+
+export function notifyContentUpdated() {
+  invalidateResumeCache();
+  window.dispatchEvent(new Event(CONTENT_UPDATED_EVENT));
 }

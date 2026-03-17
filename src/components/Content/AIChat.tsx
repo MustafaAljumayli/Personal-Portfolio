@@ -14,7 +14,7 @@ const AIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hey! I'm Mustafa — well, an AI version of me. Ask me anything about my experience, skills, projects, or background. I'm here to chat!",
+      content: "Hey!👋🏽 I'm Mustafa...well, an AI version of me 🤖. Ask me anything about my experience, skills, projects, or background. I'm here to chat! 💬",
     },
   ]);
   const [input, setInput] = useState("");

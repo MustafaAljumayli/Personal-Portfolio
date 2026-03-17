@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/lib/api";
+import { notifyContentUpdated } from "@/hooks/useResumeData";
 
 import SiteSettingsTab from "@/components/Admin/SiteSettingsTab";
 import AboutTab from "@/components/Admin/AboutTab";
@@ -122,6 +123,7 @@ const Admin = () => {
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || "Parse failed");
       setParseResult(data?.data ?? null);
+      notifyContentUpdated();
       toast.success("Resume parsed and applied to site!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Parse failed");
@@ -271,7 +273,7 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background p-6 pb-24">
       <div className="star-field" />
       <div className="max-w-4xl mx-auto relative z-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

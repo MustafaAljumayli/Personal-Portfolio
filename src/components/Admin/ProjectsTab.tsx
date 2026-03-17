@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Save, Loader2, Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,14 @@ export default function ProjectsTab({ token }: { token: string }) {
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  const expand = (i: number | null) => {
+    setExpanded(i);
+    if (i !== null) {
+      setTimeout(() => itemRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    }
+  };
 
   useEffect(() => {
     fetchSection<Project[]>("projects").then((d) => {
@@ -44,14 +52,14 @@ export default function ProjectsTab({ token }: { token: string }) {
 
   const addProject = () => {
     setProjects([...projects, { ...emptyProject, bullets: [""] }]);
-    setExpanded(projects.length);
+    expand(projects.length);
   };
 
   const removeProject = (i: number) => {
     const p = [...projects];
     p.splice(i, 1);
     setProjects(p);
-    if (expanded === i) setExpanded(null);
+    if (expanded === i) expand(null);
   };
 
   const update = (i: number, patch: Partial<Project>) => {
@@ -65,7 +73,7 @@ export default function ProjectsTab({ token }: { token: string }) {
     const p = [...projects];
     [p[i - 1], p[i]] = [p[i], p[i - 1]];
     setProjects(p);
-    setExpanded(i - 1);
+    expand(i - 1);
   };
 
   const moveDown = (i: number) => {
@@ -73,7 +81,7 @@ export default function ProjectsTab({ token }: { token: string }) {
     const p = [...projects];
     [p[i], p[i + 1]] = [p[i + 1], p[i]];
     setProjects(p);
-    setExpanded(i + 1);
+    expand(i + 1);
   };
 
   const updateBullet = (pi: number, bi: number, val: string) => {
@@ -108,9 +116,9 @@ export default function ProjectsTab({ token }: { token: string }) {
       </div>
 
       {projects.map((proj, i) => (
-        <div key={i} className="glass-panel overflow-hidden">
+        <div key={i} ref={(el) => { itemRefs.current[i] = el; }} className="glass-panel">
           <button
-            onClick={() => setExpanded(expanded === i ? null : i)}
+            onClick={() => expand(expanded === i ? null : i)}
             className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/20 transition-colors"
           >
             <div className="flex items-center gap-2">

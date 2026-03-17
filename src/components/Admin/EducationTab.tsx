@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Save, Loader2, Plus, Trash2, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,14 @@ export default function EducationTab({ token }: { token: string }) {
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  const expand = (i: number | null) => {
+    setExpanded(i);
+    if (i !== null) {
+      setTimeout(() => itemRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    }
+  };
 
   useEffect(() => {
     fetchSection<Education[]>("education").then((d) => {
@@ -40,14 +48,14 @@ export default function EducationTab({ token }: { token: string }) {
 
   const add = () => {
     setItems([{ degree: "", school: "", period: "", gpa: "", awards: [] }, ...items]);
-    setExpanded(0);
+    expand(0);
   };
 
   const remove = (i: number) => {
     const next = [...items];
     next.splice(i, 1);
     setItems(next);
-    if (expanded === i) setExpanded(null);
+    if (expanded === i) expand(null);
   };
 
   const update = (i: number, patch: Partial<Education>) => {
@@ -61,7 +69,7 @@ export default function EducationTab({ token }: { token: string }) {
     const next = [...items];
     [next[i - 1], next[i]] = [next[i], next[i - 1]];
     setItems(next);
-    setExpanded(i - 1);
+    expand(i - 1);
   };
 
   const moveDown = (i: number) => {
@@ -69,7 +77,7 @@ export default function EducationTab({ token }: { token: string }) {
     const next = [...items];
     [next[i], next[i + 1]] = [next[i + 1], next[i]];
     setItems(next);
-    setExpanded(i + 1);
+    expand(i + 1);
   };
 
   const addAward = (i: number) => {
@@ -100,9 +108,9 @@ export default function EducationTab({ token }: { token: string }) {
       </div>
 
       {items.map((edu, i) => (
-        <div key={i} className="glass-panel overflow-hidden">
+        <div key={i} ref={(el) => { itemRefs.current[i] = el; }} className="glass-panel">
           <button
-            onClick={() => setExpanded(expanded === i ? null : i)}
+            onClick={() => expand(expanded === i ? null : i)}
             className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/20 transition-colors"
           >
             <div className="flex items-center gap-2 min-w-0">
