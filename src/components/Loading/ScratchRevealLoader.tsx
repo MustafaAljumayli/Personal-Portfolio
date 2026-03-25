@@ -17,7 +17,7 @@ function getClientXY(e: PointerEvent | TouchEvent): { x: number; y: number } | n
   return { x: (e as PointerEvent).clientX, y: (e as PointerEvent).clientY };
 }
 
-export default function ScratchRevealLoader({ done, radius = 90 }: Props) {
+export default function ScratchRevealLoader({ done, radius = 30 }: Props) {
   const { progress, active } = useProgress();
   const isVisible = active && !done;
   const pct = Math.round(progress);

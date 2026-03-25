@@ -3,6 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { isMobileDevice } from "@/lib/device";
 import { useBitmapTexture } from "@/hooks/useBitmapTexture";
+import { useDeferredKtx2Upgrade } from "@/hooks/useDeferredKtx2Upgrade";
+import { useKtx2SuspenseTexture } from "@/hooks/useKtx2SuspenseTexture";
 
 interface EarthProps {
   isAutoRotating: boolean;
@@ -18,46 +20,97 @@ const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProp
   const cloudsRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
 
-  const basePath = isMobile ? "/mobile/" : "/";
-  const earthTexture = useBitmapTexture(`${basePath}8k_earth_daymap.jpg`);
-  const nightTexture = useBitmapTexture(`${basePath}8k_earth_nightmap.jpg`);
-  const bumpTexture = useBitmapTexture(`${basePath}8081_earthbump10k.jpg`);
-  const specTexture = useBitmapTexture(`${basePath}8081_earthspec10k.jpg`);
-  const cloudsAlphaTexture = useBitmapTexture(`${basePath}8k_earth_clouds.jpg`);
+  // Mobile: render immediately with 2K JPGs, then silently upgrade to 8K KTX2 in idle time.
+  // Desktop: always use 8K JPGs (no issues).
+  const lowBase = isMobile ? "/mobile/" : "/";
+
+  const earthLow = useBitmapTexture(`${lowBase}8k_earth_daymap.jpg`);
+  const nightLow = useBitmapTexture(`${lowBase}8k_earth_nightmap.jpg`);
+  const bumpLow = useBitmapTexture(`${lowBase}8081_earthbump10k.jpg`);
+  const specLow = useBitmapTexture(`${lowBase}8081_earthspec10k.jpg`);
+  const cloudsLow = useBitmapTexture(`${lowBase}8k_earth_clouds.jpg`);
+
+  const earthDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_daymap.ktx2", { flipV: true });
+  const nightDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_nightmap.ktx2", { flipV: true });
+  const bumpDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8081_earthbump10k.ktx2", { flipV: true });
+  const specDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8081_earthspec10k.ktx2", { flipV: true });
+  const cloudsDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_clouds.ktx2", { flipV: true });
+
+  const earthTexture = useDeferredKtx2Upgrade({
+    enabled: isMobile,
+    low: earthLow,
+    highUrl: "/ktx2/mobile4k/earth_day_4k.ktx2",
+    flipV: true,
+    priority: 0,
+  });
+  const nightTexture = useDeferredKtx2Upgrade({
+    enabled: isMobile,
+    low: nightLow,
+    highUrl: "/ktx2/mobile4k/earth_night_4k.ktx2",
+    flipV: true,
+    priority: 1,
+  });
+  const bumpTexture = useDeferredKtx2Upgrade({
+    enabled: isMobile,
+    low: bumpLow,
+    highUrl: "/ktx2/mobile4k/earth_bump_4k.ktx2",
+    flipV: true,
+    priority: 20,
+  });
+  const specTexture = useDeferredKtx2Upgrade({
+    enabled: isMobile,
+    low: specLow,
+    highUrl: "/ktx2/mobile4k/earth_spec_4k.ktx2",
+    flipV: true,
+    priority: 30,
+  });
+  const cloudsAlphaTexture = useDeferredKtx2Upgrade({
+    enabled: isMobile,
+    low: cloudsLow,
+    highUrl: "/ktx2/mobile4k/earth_clouds_4k.ktx2",
+    flipV: true,
+    priority: 10,
+  });
+
+  const earthFinal = isMobile ? earthTexture : earthDesktop;
+  const nightFinal = isMobile ? nightTexture : nightDesktop;
+  const bumpFinal = isMobile ? bumpTexture : bumpDesktop;
+  const specFinal = isMobile ? specTexture : specDesktop;
+  const cloudsFinal = isMobile ? cloudsAlphaTexture : cloudsDesktop;
 
   useMemo(() => {
     const aniso = isMobile ? 4 : 16;
 
-    earthTexture.colorSpace = THREE.SRGBColorSpace;
-    earthTexture.anisotropy = aniso;
-    earthTexture.needsUpdate = true;
+    earthFinal.colorSpace = THREE.SRGBColorSpace;
+    earthFinal.anisotropy = aniso;
+    earthFinal.needsUpdate = true;
 
-    nightTexture.colorSpace = THREE.SRGBColorSpace;
-    nightTexture.anisotropy = aniso;
-    nightTexture.needsUpdate = true;
+    nightFinal.colorSpace = THREE.SRGBColorSpace;
+    nightFinal.anisotropy = aniso;
+    nightFinal.needsUpdate = true;
 
-    bumpTexture.colorSpace = THREE.NoColorSpace;
-    bumpTexture.anisotropy = aniso;
-    bumpTexture.wrapS = THREE.ClampToEdgeWrapping;
-    bumpTexture.wrapT = THREE.ClampToEdgeWrapping;
-    bumpTexture.minFilter = THREE.LinearMipmapLinearFilter;
-    bumpTexture.magFilter = THREE.LinearFilter;
-    bumpTexture.needsUpdate = true;
+    bumpFinal.colorSpace = THREE.NoColorSpace;
+    bumpFinal.anisotropy = aniso;
+    bumpFinal.wrapS = THREE.ClampToEdgeWrapping;
+    bumpFinal.wrapT = THREE.ClampToEdgeWrapping;
+    bumpFinal.minFilter = THREE.LinearMipmapLinearFilter;
+    bumpFinal.magFilter = THREE.LinearFilter;
+    bumpFinal.needsUpdate = true;
 
-    specTexture.colorSpace = THREE.NoColorSpace;
-    specTexture.anisotropy = aniso;
-    specTexture.wrapS = THREE.ClampToEdgeWrapping;
-    specTexture.wrapT = THREE.ClampToEdgeWrapping;
-    specTexture.minFilter = THREE.LinearMipmapLinearFilter;
-    specTexture.magFilter = THREE.LinearFilter;
-    specTexture.needsUpdate = true;
+    specFinal.colorSpace = THREE.NoColorSpace;
+    specFinal.anisotropy = aniso;
+    specFinal.wrapS = THREE.ClampToEdgeWrapping;
+    specFinal.wrapT = THREE.ClampToEdgeWrapping;
+    specFinal.minFilter = THREE.LinearMipmapLinearFilter;
+    specFinal.magFilter = THREE.LinearFilter;
+    specFinal.needsUpdate = true;
 
-    cloudsAlphaTexture.colorSpace = THREE.NoColorSpace;
-    cloudsAlphaTexture.anisotropy = aniso;
-    cloudsAlphaTexture.wrapS = THREE.RepeatWrapping;
-    cloudsAlphaTexture.wrapT = THREE.ClampToEdgeWrapping;
-    cloudsAlphaTexture.needsUpdate = true;
-  }, [earthTexture, nightTexture, bumpTexture, specTexture, cloudsAlphaTexture]);
+    cloudsFinal.colorSpace = THREE.NoColorSpace;
+    cloudsFinal.anisotropy = aniso;
+    cloudsFinal.wrapS = THREE.RepeatWrapping;
+    cloudsFinal.wrapT = THREE.ClampToEdgeWrapping;
+    cloudsFinal.needsUpdate = true;
+  }, [earthFinal, nightFinal, bumpFinal, specFinal, cloudsFinal, isMobile]);
 
   const atmosphereUniforms = useMemo(
     () => ({ glowColor: { value: new THREE.Color(0x4da6ff) } }),
@@ -96,12 +149,12 @@ const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProp
       <mesh ref={meshRef}>
         <sphereGeometry args={[2, SEGMENTS, SEGMENTS]} />
         <meshStandardMaterial
-          map={earthTexture}
+          map={earthFinal}
           emissive={new THREE.Color("#ffffff")}
-          emissiveMap={nightTexture}
+          emissiveMap={nightFinal}
           emissiveIntensity={1.5}
           roughness={1}
-          bumpMap={bumpTexture}
+          bumpMap={bumpFinal}
           bumpScale={30}
           metalness={0.0}
           onBeforeCompile={(shader) => {
@@ -121,7 +174,7 @@ const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProp
         <sphereGeometry args={[2.015, SEGMENTS, SEGMENTS]} />
         <meshStandardMaterial
           color="#ffffff"
-          alphaMap={cloudsAlphaTexture}
+          alphaMap={cloudsFinal}
           transparent
           opacity={0.8}
           depthWrite={false}
