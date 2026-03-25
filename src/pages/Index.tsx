@@ -4,9 +4,12 @@ import SpaceNav from "@/components/Navigation/SpaceNav";
 import ContentPanel from "@/components/Content/ContentPanel";
 import BlogOverlay from "@/components/Blog/BlogOverlay";
 import { useResumeData } from "@/hooks/useResumeData";
+import ScratchRevealLoader from "@/components/Loading/ScratchRevealLoader";
+import { useProgress } from "@react-three/drei";
 
 const Index = () => {
   const { settings } = useResumeData();
+  const { active, progress } = useProgress();
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [showContent, setShowContent] = useState(false);
   const [globeReady, setGlobeReady] = useState(false);
@@ -33,6 +36,7 @@ const Index = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
+      <ScratchRevealLoader done={!active && progress >= 100 && globeReady} />
       {/* 3D Globe */}
       <GlobeScene
         activeSection={activeSection}
@@ -80,11 +84,7 @@ const Index = () => {
         </div>
       )}
 
-      {!globeReady ? (
-        <div className="fixed inset-0 flex items-center justify-center text-muted-foreground">
-          Loading the Universe...
-        </div>
-      ) : null}
+      {/* loader overlay handled by InteractiveLoader */}
     </div>
   );
 };

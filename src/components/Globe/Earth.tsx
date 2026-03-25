@@ -1,7 +1,8 @@
-import { useRef } from "react";
-import { useFrame, useLoader } from "@react-three/fiber";
-import { TextureLoader } from "three";
+import { useRef, useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { isMobileDevice } from "@/lib/device";
+import { useBitmapTexture } from "@/hooks/useBitmapTexture";
 
 interface EarthProps {
   isAutoRotating: boolean;
@@ -9,69 +10,81 @@ interface EarthProps {
   onRotationComplete?: () => void;
 }
 
+const isMobile = isMobileDevice();
+const SEGMENTS = isMobile ? 32 : 64;
+
 const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
 
-  // Base color map (day)
-  const earthTexture = useLoader(TextureLoader, "/8k_earth_daymap.jpg");
-  earthTexture.colorSpace = THREE.SRGBColorSpace;
-  earthTexture.anisotropy = 16;
+  const basePath = isMobile ? "/mobile/" : "/";
+  const earthTexture = useBitmapTexture(`${basePath}8k_earth_daymap.jpg`);
+  const nightTexture = useBitmapTexture(`${basePath}8k_earth_nightmap.jpg`);
+  const bumpTexture = useBitmapTexture(`${basePath}8081_earthbump10k.jpg`);
+  const specTexture = useBitmapTexture(`${basePath}8081_earthspec10k.jpg`);
+  const cloudsAlphaTexture = useBitmapTexture(`${basePath}8k_earth_clouds.jpg`);
 
-  // City lights (from /public/8k_earth_nightmap.jpg)
-  const nightTexture = useLoader(TextureLoader, "/8k_earth_nightmap.jpg");
-  nightTexture.colorSpace = THREE.SRGBColorSpace;
-  nightTexture.anisotropy = 16;
+  useMemo(() => {
+    const aniso = isMobile ? 4 : 16;
 
-  // Bump/height map (controls terrain relief)
-  const bumpTexture = useLoader(TextureLoader, "/8081_earthbump10k.jpg");
-  bumpTexture.colorSpace = THREE.NoColorSpace;
-  bumpTexture.anisotropy = 16;
-  bumpTexture.wrapS = THREE.ClampToEdgeWrapping;
-  bumpTexture.wrapT = THREE.ClampToEdgeWrapping;
-  bumpTexture.minFilter = THREE.LinearMipmapLinearFilter;
-  bumpTexture.magFilter = THREE.LinearFilter;
+    earthTexture.colorSpace = THREE.SRGBColorSpace;
+    earthTexture.anisotropy = aniso;
+    earthTexture.needsUpdate = true;
 
-  // Specularity map (controls ocean/land shine). We'll use it as an inverted roughness map.
-  const specTexture = useLoader(TextureLoader, "/8081_earthspec10k.jpg");
-  specTexture.colorSpace = THREE.NoColorSpace;
-  specTexture.anisotropy = 16;
-  specTexture.wrapS = THREE.ClampToEdgeWrapping;
-  specTexture.wrapT = THREE.ClampToEdgeWrapping;
-  specTexture.minFilter = THREE.LinearMipmapLinearFilter;
-  specTexture.magFilter = THREE.LinearFilter;
+    nightTexture.colorSpace = THREE.SRGBColorSpace;
+    nightTexture.anisotropy = aniso;
+    nightTexture.needsUpdate = true;
 
-  // High-res cloud mask (from /public/8k_earth_clouds.jpg)
-  // This is a grayscale image, so we use it as an alphaMap to avoid a black "clouds background".
-  const cloudsAlphaTexture = useLoader(TextureLoader, "/8k_earth_clouds.jpg");
-  cloudsAlphaTexture.colorSpace = THREE.NoColorSpace;
-  cloudsAlphaTexture.anisotropy = 20;
-  cloudsAlphaTexture.wrapS = THREE.RepeatWrapping;
-  cloudsAlphaTexture.wrapT = THREE.ClampToEdgeWrapping;
+    bumpTexture.colorSpace = THREE.NoColorSpace;
+    bumpTexture.anisotropy = aniso;
+    bumpTexture.wrapS = THREE.ClampToEdgeWrapping;
+    bumpTexture.wrapT = THREE.ClampToEdgeWrapping;
+    bumpTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    bumpTexture.magFilter = THREE.LinearFilter;
+    bumpTexture.needsUpdate = true;
 
-  useFrame((state, delta) => {
-    if (!meshRef.current) return;
+    specTexture.colorSpace = THREE.NoColorSpace;
+    specTexture.anisotropy = aniso;
+    specTexture.wrapS = THREE.ClampToEdgeWrapping;
+    specTexture.wrapT = THREE.ClampToEdgeWrapping;
+    specTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    specTexture.magFilter = THREE.LinearFilter;
+    specTexture.needsUpdate = true;
+
+    cloudsAlphaTexture.colorSpace = THREE.NoColorSpace;
+    cloudsAlphaTexture.anisotropy = aniso;
+    cloudsAlphaTexture.wrapS = THREE.RepeatWrapping;
+    cloudsAlphaTexture.wrapT = THREE.ClampToEdgeWrapping;
+    cloudsAlphaTexture.needsUpdate = true;
+  }, [earthTexture, nightTexture, bumpTexture, specTexture, cloudsAlphaTexture]);
+
+  const atmosphereUniforms = useMemo(
+    () => ({ glowColor: { value: new THREE.Color(0x4da6ff) } }),
+    []
+  );
+
+  useFrame((_, delta) => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
     const clouds = cloudsRef.current;
 
     if (targetRotation) {
-      // Smooth interpolation to target
       const lerpSpeed = 2 * delta;
-      meshRef.current.rotation.x += (targetRotation.x - meshRef.current.rotation.x) * lerpSpeed;
-      meshRef.current.rotation.y += (targetRotation.y - meshRef.current.rotation.y) * lerpSpeed;
+      mesh.rotation.x += (targetRotation.x - mesh.rotation.x) * lerpSpeed;
+      mesh.rotation.y += (targetRotation.y - mesh.rotation.y) * lerpSpeed;
       if (clouds) {
-        clouds.rotation.x = meshRef.current.rotation.x;
-        clouds.rotation.y = meshRef.current.rotation.y + 0.01;
+        clouds.rotation.x = mesh.rotation.x;
+        clouds.rotation.y = mesh.rotation.y + 0.01;
       }
 
-      // Check if close enough
-      const distX = Math.abs(targetRotation.x - meshRef.current.rotation.x);
-      const distY = Math.abs(targetRotation.y - meshRef.current.rotation.y);
+      const distX = Math.abs(targetRotation.x - mesh.rotation.x);
+      const distY = Math.abs(targetRotation.y - mesh.rotation.y);
       if (distX < 0.01 && distY < 0.01 && onRotationComplete) {
         onRotationComplete();
       }
     } else if (isAutoRotating) {
-      meshRef.current.rotation.y += delta * 0.1;
+      mesh.rotation.y += delta * 0.1;
       if (clouds) {
         clouds.rotation.y += delta * 0.12;
       }
@@ -80,32 +93,18 @@ const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProp
 
   return (
     <group>
-      {/* Earth */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[2, 64, 64]} />
+        <sphereGeometry args={[2, SEGMENTS, SEGMENTS]} />
         <meshStandardMaterial
           map={earthTexture}
           emissive={new THREE.Color("#ffffff")}
           emissiveMap={nightTexture}
-          emissiveIntensity={3.0}
-          roughness={20}
-          roughnessMap={specTexture}
+          emissiveIntensity={1.5}
+          roughness={1}
           bumpMap={bumpTexture}
-          bumpScale={50}
+          bumpScale={30}
           metalness={0.0}
           onBeforeCompile={(shader) => {
-            // Invert roughness sampling so "specular" (bright oceans) become low-roughness/smoother.
-            shader.fragmentShader = shader.fragmentShader.replace(
-              "roughnessFactor *= texelRoughness.g;",
-              `
-              float rTex = ( 1.0 - texelRoughness.g );
-              // soften contrast to hide map artifacts, and reduce influence so it feels natural
-              rTex = smoothstep( 0.15, 0.85, rTex );
-              roughnessFactor *= mix( 1.0, rTex, 0.35 );
-              `
-            );
-
-            // Show city lights predominantly on the night side (relative to the main directional light).
             shader.fragmentShader = shader.fragmentShader.replace(
               "totalEmissiveRadiance *= emissiveColor.rgb;",
               `totalEmissiveRadiance *= emissiveColor.rgb;
@@ -118,29 +117,24 @@ const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProp
         />
       </mesh>
 
-      {/* Clouds */}
       <mesh ref={cloudsRef}>
-        <sphereGeometry args={[2.02, 64, 64]} />
+        <sphereGeometry args={[2.015, SEGMENTS, SEGMENTS]} />
         <meshStandardMaterial
           color="#ffffff"
           alphaMap={cloudsAlphaTexture}
           transparent
-          opacity={1.5}
+          opacity={0.8}
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
         />
       </mesh>
 
-      {/* Atmosphere glow */}
-      <mesh ref={atmosphereRef} scale={1.13}>
-        <sphereGeometry args={[2, 64, 64]} />
+      <mesh ref={atmosphereRef} scale={1.08}>
+        <sphereGeometry args={[2, SEGMENTS, SEGMENTS]} />
         <shaderMaterial
           transparent
           depthWrite={false}
           side={THREE.BackSide}
-          uniforms={{
-            glowColor: { value: new THREE.Color(0x4da6ff) },
-          }}
+          uniforms={atmosphereUniforms}
           vertexShader={`
             varying vec3 vNormal;
             void main() {

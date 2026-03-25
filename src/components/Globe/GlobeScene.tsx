@@ -4,6 +4,7 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { cn } from "@/lib/utils";
+import { isMobileDevice } from "@/lib/device";
 import Earth from "./Earth";
 import MilkyWay from "./MilkyWay";
 
@@ -67,6 +68,27 @@ const CameraController = ({
     }
   });
 
+  return null;
+};
+
+const ContextLossHandler = () => {
+  const { gl } = useThree();
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const handleLost = (e: Event) => {
+      e.preventDefault();
+      console.warn("WebGL context lost — pausing render");
+    };
+    const handleRestored = () => {
+      console.info("WebGL context restored");
+    };
+    canvas.addEventListener("webglcontextlost", handleLost);
+    canvas.addEventListener("webglcontextrestored", handleRestored);
+    return () => {
+      canvas.removeEventListener("webglcontextlost", handleLost);
+      canvas.removeEventListener("webglcontextrestored", handleRestored);
+    };
+  }, [gl]);
   return null;
 };
 
@@ -150,6 +172,7 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
 
   return (
     <>
+      <ContextLossHandler />
       <CameraController activeSection={activeSection} onArrived={handleCameraArrived} />
       <OrbitControls
         ref={controlsRef}
@@ -172,9 +195,9 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
           RIGHT: THREE.MOUSE.PAN,
         }}
       />
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[5, 3, 5]} intensity={7.1} />
-      <pointLight position={[-10, -10, -10]} intensity={10} color="#4da6ff" />
+      <ambientLight intensity={0.25} />
+      <directionalLight position={[5, 3, 5]} intensity={5.0} />
+      <pointLight position={[-10, -10, -10]} intensity={6} color="#4da6ff" />
       <MilkyWay />
       <Earth
         isAutoRotating={!controlsLocked}
@@ -187,6 +210,7 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
 
 const GlobeScene = (props: GlobeSceneProps) => {
   const [globeReady, setGlobeReady] = useState(false);
+  const isMobile = isMobileDevice();
 
   const handleGlobeReady = () => {
     setGlobeReady(true);
@@ -206,7 +230,16 @@ const GlobeScene = (props: GlobeSceneProps) => {
           globeReady ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-[0.98] blur-[2px]"
         )}
       >
-        <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
+        <Canvas
+          camera={{ position: [0, 0, 6], fov: 45 }}
+          dpr={isMobile ? [1, 1.5] : [1, 2]}
+          performance={{ min: isMobile ? 0.5 : 0.75 }}
+          gl={{
+            antialias: !isMobile,
+            powerPreference: "high-performance",
+            failIfMajorPerformanceCaveat: false,
+          }}
+        >
           <Suspense fallback={null}>
             <GlobeContent {...props} onGlobeReady={handleGlobeReady} />
           </Suspense>
