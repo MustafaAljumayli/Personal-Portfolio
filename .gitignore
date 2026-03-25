@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local build tools / extracted binaries (never commit)
+tools/ktx/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
