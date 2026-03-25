@@ -2,24 +2,12 @@ import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { isMobileDevice } from "@/lib/device";
-import { useBitmapTexture } from "@/hooks/useBitmapTexture";
 import { useDeferredKtx2Upgrade } from "@/hooks/useDeferredKtx2Upgrade";
 import { useKtx2SuspenseTexture } from "@/hooks/useKtx2SuspenseTexture";
+import { useBasicTexture } from "@/hooks/useBasicTexture";
 
-const MilkyWay = () => {
+const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THREE.Texture }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-
-  const isMobile = isMobileDevice();
-  const low = useBitmapTexture(isMobile ? "/mobile/8k_stars_milky_way.jpg" : "/8k_stars_milky_way.jpg");
-  const mobileTexture = useDeferredKtx2Upgrade({
-    enabled: isMobile,
-    low,
-    highUrl: "/ktx2/mobile4k/stars_4k.ktx2",
-    flipV: true,
-    priority: 40,
-  });
-  const desktopTexture = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_stars_milky_way.ktx2", { flipV: true });
-  const texture = isMobile ? mobileTexture : desktopTexture;
 
   useMemo(() => {
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -47,6 +35,30 @@ const MilkyWay = () => {
       />
     </mesh>
   );
+};
+
+const MobileMilkyWay = () => {
+  const isMobile = true;
+  const low = useBasicTexture("/mobile/8k_stars_milky_way.jpg");
+  const texture = useDeferredKtx2Upgrade({
+    enabled: true,
+    low,
+    highUrl: "/ktx2/mobile4k/stars_4k.ktx2",
+    flipV: true,
+    priority: 40,
+  });
+  return <MilkyWayShared isMobile={isMobile} texture={texture} />;
+};
+
+const DesktopMilkyWay = () => {
+  const isMobile = false;
+  const texture = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_stars_milky_way.ktx2", { flipV: true });
+  return <MilkyWayShared isMobile={isMobile} texture={texture} />;
+};
+
+const MilkyWay = () => {
+  const mobile = isMobileDevice();
+  return mobile ? <MobileMilkyWay /> : <DesktopMilkyWay />;
 };
 
 export default MilkyWay;

@@ -3,6 +3,7 @@ import { useProgress } from "@react-three/drei";
 import { cn } from "@/lib/utils";
 
 type Props = {
+  enabled?: boolean;
   done?: boolean;
   /** Brush radius in px */
   radius?: number;
@@ -17,9 +18,10 @@ function getClientXY(e: PointerEvent | TouchEvent): { x: number; y: number } | n
   return { x: (e as PointerEvent).clientX, y: (e as PointerEvent).clientY };
 }
 
-export default function ScratchRevealLoader({ done, radius = 30 }: Props) {
+export default function ScratchRevealLoader({ enabled = true, done, radius = 30 }: Props) {
   const { progress, active } = useProgress();
-  const isVisible = active && !done;
+  const isVisible = enabled && !done;
+  const [displayPct, setDisplayPct] = useState(0);
   const pct = Math.round(progress);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -42,6 +44,18 @@ export default function ScratchRevealLoader({ done, radius = 30 }: Props) {
   }, [done]);
 
   const hue = useMemo(() => Math.round(210 + 70 * Math.sin(t * Math.PI * 2)), [t]);
+
+  useEffect(() => {
+    if (!enabled || done) return;
+    if (!active && pct <= 0) return;
+    setDisplayPct((prev) => Math.max(prev, pct));
+  }, [active, done, enabled, pct]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (!done) return;
+    setDisplayPct(100);
+  }, [done, enabled]);
 
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
@@ -216,11 +230,11 @@ export default function ScratchRevealLoader({ done, radius = 30 }: Props) {
           <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
             <div
               className="h-full rounded-full bg-white/70 transition-[width] duration-200"
-              style={{ width: `${pct}%` }}
+              style={{ width: `${displayPct}%` }}
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-white/60">
-            <span>{pct}%</span>
+            <span>{displayPct}%</span>
             <span className="hidden sm:inline">drag • swipe • explore</span>
             <span className="sm:hidden">swipe</span>
           </div>

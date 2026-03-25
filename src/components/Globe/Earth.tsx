@@ -2,9 +2,10 @@ import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { isMobileDevice } from "@/lib/device";
-import { useBitmapTexture } from "@/hooks/useBitmapTexture";
 import { useDeferredKtx2Upgrade } from "@/hooks/useDeferredKtx2Upgrade";
 import { useKtx2SuspenseTexture } from "@/hooks/useKtx2SuspenseTexture";
+import { useBitmapTexture } from "@/hooks/useBitmapTexture";
+import { useBasicTexture } from "@/hooks/useBasicTexture";
 
 interface EarthProps {
   isAutoRotating: boolean;
@@ -12,71 +13,29 @@ interface EarthProps {
   onRotationComplete?: () => void;
 }
 
-const isMobile = isMobileDevice();
-const SEGMENTS = isMobile ? 32 : 64;
-
-const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProps) => {
+const EarthShared = ({
+  isAutoRotating,
+  targetRotation,
+  onRotationComplete,
+  isMobile,
+  earthFinal,
+  nightFinal,
+  bumpFinal,
+  specFinal,
+  cloudsFinal,
+}: EarthProps & {
+  isMobile: boolean;
+  earthFinal: THREE.Texture;
+  nightFinal: THREE.Texture;
+  bumpFinal: THREE.Texture;
+  specFinal: THREE.Texture;
+  cloudsFinal: THREE.Texture;
+}) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
 
-  // Mobile: render immediately with 2K JPGs, then silently upgrade to 8K KTX2 in idle time.
-  // Desktop: always use 8K JPGs (no issues).
-  const lowBase = isMobile ? "/mobile/" : "/";
-
-  const earthLow = useBitmapTexture(`${lowBase}8k_earth_daymap.jpg`);
-  const nightLow = useBitmapTexture(`${lowBase}8k_earth_nightmap.jpg`);
-  const bumpLow = useBitmapTexture(`${lowBase}8081_earthbump10k.jpg`);
-  const specLow = useBitmapTexture(`${lowBase}8081_earthspec10k.jpg`);
-  const cloudsLow = useBitmapTexture(`${lowBase}8k_earth_clouds.jpg`);
-
-  const earthDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_daymap.ktx2", { flipV: true });
-  const nightDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_nightmap.ktx2", { flipV: true });
-  const bumpDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8081_earthbump10k.ktx2", { flipV: true });
-  const specDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8081_earthspec10k.ktx2", { flipV: true });
-  const cloudsDesktop = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_clouds.ktx2", { flipV: true });
-
-  const earthTexture = useDeferredKtx2Upgrade({
-    enabled: isMobile,
-    low: earthLow,
-    highUrl: "/ktx2/mobile4k/earth_day_4k.ktx2",
-    flipV: true,
-    priority: 0,
-  });
-  const nightTexture = useDeferredKtx2Upgrade({
-    enabled: isMobile,
-    low: nightLow,
-    highUrl: "/ktx2/mobile4k/earth_night_4k.ktx2",
-    flipV: true,
-    priority: 1,
-  });
-  const bumpTexture = useDeferredKtx2Upgrade({
-    enabled: isMobile,
-    low: bumpLow,
-    highUrl: "/ktx2/mobile4k/earth_bump_4k.ktx2",
-    flipV: true,
-    priority: 20,
-  });
-  const specTexture = useDeferredKtx2Upgrade({
-    enabled: isMobile,
-    low: specLow,
-    highUrl: "/ktx2/mobile4k/earth_spec_4k.ktx2",
-    flipV: true,
-    priority: 30,
-  });
-  const cloudsAlphaTexture = useDeferredKtx2Upgrade({
-    enabled: isMobile,
-    low: cloudsLow,
-    highUrl: "/ktx2/mobile4k/earth_clouds_4k.ktx2",
-    flipV: true,
-    priority: 10,
-  });
-
-  const earthFinal = isMobile ? earthTexture : earthDesktop;
-  const nightFinal = isMobile ? nightTexture : nightDesktop;
-  const bumpFinal = isMobile ? bumpTexture : bumpDesktop;
-  const specFinal = isMobile ? specTexture : specDesktop;
-  const cloudsFinal = isMobile ? cloudsAlphaTexture : cloudsDesktop;
+  const SEGMENTS = isMobile ? 32 : 64;
 
   useMemo(() => {
     const aniso = isMobile ? 4 : 16;
@@ -207,6 +166,93 @@ const Earth = ({ isAutoRotating, targetRotation, onRotationComplete }: EarthProp
       </mesh>
     </group>
   );
+};
+
+const MobileEarth = (props: EarthProps) => {
+  const isMobile = true;
+  const lowBase = "/mobile/";
+
+  // Base mobile textures must be максимально compatible (iOS Safari).
+  // Use TextureLoader for low-res JPGs; KTX2 upgrade happens later.
+  const earthLow = useBasicTexture(`${lowBase}8k_earth_daymap.jpg`);
+  const nightLow = useBasicTexture(`${lowBase}8k_earth_nightmap.jpg`);
+  const bumpLow = useBasicTexture(`${lowBase}8081_earthbump10k.jpg`);
+  const specLow = useBasicTexture(`${lowBase}8081_earthspec10k.jpg`);
+  const cloudsLow = useBasicTexture(`${lowBase}8k_earth_clouds.jpg`);
+
+  const earthFinal = useDeferredKtx2Upgrade({
+    enabled: true,
+    low: earthLow,
+    highUrl: "/ktx2/mobile4k/earth_day_4k.ktx2",
+    flipV: true,
+    priority: 0,
+  });
+  const nightFinal = useDeferredKtx2Upgrade({
+    enabled: true,
+    low: nightLow,
+    highUrl: "/ktx2/mobile4k/earth_night_4k.ktx2",
+    flipV: true,
+    priority: 1,
+  });
+  const cloudsFinal = useDeferredKtx2Upgrade({
+    enabled: true,
+    low: cloudsLow,
+    highUrl: "/ktx2/mobile4k/earth_clouds_4k.ktx2",
+    flipV: true,
+    priority: 10,
+  });
+  const bumpFinal = useDeferredKtx2Upgrade({
+    enabled: true,
+    low: bumpLow,
+    highUrl: "/ktx2/mobile4k/earth_bump_4k.ktx2",
+    flipV: true,
+    priority: 20,
+  });
+  const specFinal = useDeferredKtx2Upgrade({
+    enabled: true,
+    low: specLow,
+    highUrl: "/ktx2/mobile4k/earth_spec_4k.ktx2",
+    flipV: true,
+    priority: 30,
+  });
+
+  return (
+    <EarthShared
+      {...props}
+      isMobile={isMobile}
+      earthFinal={earthFinal}
+      nightFinal={nightFinal}
+      bumpFinal={bumpFinal}
+      specFinal={specFinal}
+      cloudsFinal={cloudsFinal}
+    />
+  );
+};
+
+const DesktopEarth = (props: EarthProps) => {
+  const isMobile = false;
+  const earthFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_daymap.ktx2", { flipV: true });
+  const nightFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_nightmap.ktx2", { flipV: true });
+  const bumpFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8081_earthbump10k.ktx2", { flipV: true });
+  const specFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8081_earthspec10k.ktx2", { flipV: true });
+  const cloudsFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_clouds.ktx2", { flipV: true });
+
+  return (
+    <EarthShared
+      {...props}
+      isMobile={isMobile}
+      earthFinal={earthFinal}
+      nightFinal={nightFinal}
+      bumpFinal={bumpFinal}
+      specFinal={specFinal}
+      cloudsFinal={cloudsFinal}
+    />
+  );
+};
+
+const Earth = (props: EarthProps) => {
+  const mobile = isMobileDevice();
+  return mobile ? <MobileEarth {...props} /> : <DesktopEarth {...props} />;
 };
 
 export default Earth;

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import GlobeScene from "@/components/Globe/GlobeScene";
 import SpaceNav from "@/components/Navigation/SpaceNav";
 import ContentPanel from "@/components/Content/ContentPanel";
@@ -13,6 +13,14 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [showContent, setShowContent] = useState(false);
   const [globeReady, setGlobeReady] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  useEffect(() => {
+    if (initialLoadComplete) return;
+    if (globeReady && !active && progress >= 100) {
+      setInitialLoadComplete(true);
+    }
+  }, [active, globeReady, initialLoadComplete, progress]);
 
   const handleSectionChange = useCallback((section: string | null) => {
     if (section === activeSection) {
@@ -36,7 +44,10 @@ const Index = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
-      <ScratchRevealLoader done={!active && progress >= 100 && globeReady} />
+      <ScratchRevealLoader
+        enabled={!initialLoadComplete}
+        done={initialLoadComplete}
+      />
       {/* 3D Globe */}
       <GlobeScene
         activeSection={activeSection}
