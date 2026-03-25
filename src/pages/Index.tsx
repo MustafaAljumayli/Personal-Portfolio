@@ -43,7 +43,7 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
+    <div className="fixed inset-0 h-[100dvh] w-[100dvw] overflow-hidden bg-background">
       <ScratchRevealLoader
         enabled={!initialLoadComplete}
         done={initialLoadComplete}
@@ -89,8 +89,8 @@ const Index = () => {
           <p className="text-muted-foreground mt-2 text-center">
             {settings.headline}
           </p>
-          <p className="text-muted-foreground/60 text-sm mt-4">
-            Click and drag to explore • Select a menu item to learn more
+          <p className="text-muted-foreground/60 mt-2">
+            {settings.greeting}
           </p>
         </div>
       )}

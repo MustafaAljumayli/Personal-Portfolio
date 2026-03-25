@@ -21,14 +21,14 @@ const ProjectsContent = () => {
         <p className="text-muted-foreground">Featured projects and creations</p>
       </motion.div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-x-hidden">
         {projects.map((project, index) => (
           <motion.div
             key={project.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 + index * 0.08 }}
-            className="group p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all"
+            className="group p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all min-w-0"
           >
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex-shrink-0" />

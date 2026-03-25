@@ -8,11 +8,13 @@ import { fetchSection, saveSection } from "@/lib/content-api";
 interface SiteSettings {
   name: string;
   headline: string;
+  greeting: string;
 }
 
 const defaults: SiteSettings = {
   name: "Mustafa Aljumayli",
   headline: "Software Engineer • AI Researcher",
+  greeting: "Welcome to my world!",
 };
 
 export default function SiteSettingsTab({ token }: { token: string }) {
@@ -64,6 +66,14 @@ export default function SiteSettingsTab({ token }: { token: string }) {
             className="mt-1 bg-secondary/30"
             value={settings.headline}
             onChange={(e) => setSettings({ ...settings, headline: e.target.value })}
+          />
+        </label>
+        <label className="block text-sm font-medium">
+          Greeting
+          <Input
+            className="mt-1 bg-secondary/30"
+            value={settings.greeting}
+            onChange={(e) => setSettings({ ...settings, greeting: e.target.value })}
           />
         </label>
       </div>

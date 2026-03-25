@@ -15,6 +15,7 @@ import { projects, type Project } from "@/data/projects";
 export interface SiteSettings {
   name: string;
   headline: string;
+  greeting: string;
 }
 
 export interface AboutTag {
@@ -60,6 +61,7 @@ interface ResumeData {
 const defaultSettings: SiteSettings = {
   name: "Mustafa Aljumayli",
   headline: "Software Engineer • AI Researcher",
+  greeting: "Welcome to my world!",
 };
 
 const defaultAbout: AboutData = {

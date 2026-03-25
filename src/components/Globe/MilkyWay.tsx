@@ -40,8 +40,9 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
 const MobileMilkyWay = () => {
   const isMobile = true;
   const low = useBasicTexture("/mobile/8k_stars_milky_way.jpg");
+  // Keep mobile stars stable: avoid late background swap that can disappear on some devices.
   const texture = useDeferredKtx2Upgrade({
-    enabled: true,
+    enabled: false,
     low,
     highUrl: "/ktx2/mobile4k/stars_4k.ktx2",
     flipV: true,

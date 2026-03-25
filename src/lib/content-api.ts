@@ -3,9 +3,17 @@ import { notifyContentUpdated } from "@/hooks/useResumeData";
 
 export async function fetchSection<T>(section: string): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/content/${section}`);
-    if (!res.ok) return null;
-    return await res.json();
+    const sectionRes = await fetch(`${API_BASE_URL}/api/content/${section}`);
+    if (sectionRes.ok) {
+      return await sectionRes.json();
+    }
+
+    // Fallback for older/backlevel servers or transient section-route failures:
+    // read the full content payload and extract the section client-side.
+    const fullRes = await fetch(`${API_BASE_URL}/api/content`);
+    if (!fullRes.ok) return null;
+    const full = await fullRes.json();
+    return (full?.[section] ?? null) as T | null;
   } catch {
     return null;
   }

@@ -42,14 +42,14 @@ const ContentPanel = ({ activeSection, onClose, showContent }: ContentPanelProps
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-30 flex items-center justify-center p-6 pointer-events-none"
+          className="fixed inset-0 z-30 flex items-center justify-center p-2 sm:p-6 pointer-events-none"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="glass-panel p-6 md:p-8 max-w-2xl w-full max-h-[70vh] overflow-y-auto custom-scrollbar pointer-events-auto"
+            className="glass-panel p-4 md:p-8 max-w-2xl w-full max-h-[70dvh] overflow-y-auto overflow-x-hidden custom-scrollbar pointer-events-auto"
           >
             <button
               onClick={onClose}
