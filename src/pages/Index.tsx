@@ -43,7 +43,7 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 h-[100dvh] w-[100dvw] overflow-hidden bg-background">
+    <div className="fixed inset-0 overflow-hidden bg-background">
       <ScratchRevealLoader
         enabled={!initialLoadComplete}
         done={initialLoadComplete}

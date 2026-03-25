@@ -1,9 +1,11 @@
 import "dotenv/config";
 import express from "express";
 import nodemailer from "nodemailer";
+import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { createHash } from "node:crypto";
 import { PDFParse } from "pdf-parse";
 import { ragChat, ragSync, requireAdminFromBearer, supabaseAdmin, chatOpenAI } from "./rag.mjs";
 
@@ -157,6 +159,72 @@ app.head("/api/resume/download", async (_req, res) => {
     return res.status(200).end();
   } catch {
     return res.status(500).end();
+  }
+});
+
+// ── Blog inline images (public bucket; admin-only upload) ───────────────────
+
+const BLOG_IMAGES_BUCKET = "blog-images";
+const ALLOWED_BLOG_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const BLOG_IMAGE_EXT = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+async function ensureBlogImagesBucket() {
+  const sb = supabaseAdmin();
+  const { data: buckets } = await sb.storage.listBuckets();
+  if (!buckets?.find((b) => b.name === BLOG_IMAGES_BUCKET)) {
+    await sb.storage.createBucket(BLOG_IMAGES_BUCKET, { public: true });
+  }
+}
+
+const blogImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+app.post("/api/blog/upload-image", (req, res, next) => {
+  blogImageUpload.single("file")(req, res, (err) => {
+    if (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      return res.status(400).json({ error: msg });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    await requireAdminFromBearer(req);
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: "No file provided" });
+    }
+    if (!ALLOWED_BLOG_IMAGE_TYPES.has(file.mimetype)) {
+      return res.status(400).json({ error: "Only JPEG, PNG, WebP, or GIF images are allowed" });
+    }
+
+    await ensureBlogImagesBucket();
+    const sb = supabaseAdmin();
+    const ext = BLOG_IMAGE_EXT[file.mimetype] ?? "bin";
+    // Content-addressed path: same bytes → same key → no duplicate blobs when re-uploading the same image.
+    const hash = createHash("sha256").update(file.buffer).digest("hex");
+    const objectPath = `inline/${hash}.${ext}`;
+    const { error } = await sb.storage.from(BLOG_IMAGES_BUCKET).upload(objectPath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: true,
+    });
+    if (error) throw error;
+
+    const { data } = sb.storage.from(BLOG_IMAGES_BUCKET).getPublicUrl(objectPath);
+    return res.json({ url: data.publicUrl });
+  } catch (err) {
+    console.error("blog image upload error:", err);
+    const msg = err instanceof Error ? err.message : "Upload failed";
+    const status =
+      msg.includes("Admin access required") || msg.includes("Missing Bearer token") ? 401 : 500;
+    return res.status(status).json({ error: msg });
   }
 });
 

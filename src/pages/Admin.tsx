@@ -23,6 +23,7 @@ import SkillsTab from "@/components/Admin/SkillsTab";
 import ContactTab from "@/components/Admin/ContactTab";
 import ExperienceTab from "@/components/Admin/ExperienceTab";
 import EducationTab from "@/components/Admin/EducationTab";
+import BlogEditor, { type BlogEditorValues } from "@/components/Admin/BlogEditor";
 
 interface BlogPost {
   id: string;
@@ -30,9 +31,17 @@ interface BlogPost {
   slug: string;
   content: string;
   excerpt: string | null;
+  cover_image_url: string | null;
   published: boolean;
   created_at: string;
 }
+
+const emptyBlogPost: BlogEditorValues = {
+  title: "",
+  content: "",
+  excerpt: "",
+  cover_image_url: "",
+};
 
 interface KnowledgeItem {
   id: string;
@@ -49,7 +58,7 @@ const Admin = () => {
   // Blog state
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
-  const [newPost, setNewPost] = useState({ title: "", content: "", excerpt: "" });
+  const [newPost, setNewPost] = useState<BlogEditorValues>(emptyBlogPost);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [isSavingPost, setIsSavingPost] = useState(false);
 
@@ -145,13 +154,19 @@ const Admin = () => {
     if (!newPost.title || !newPost.content) { toast.error("Title and content are required"); return; }
     setIsSavingPost(true);
     const { data: inserted, error } = await supabase.from("blog_posts").insert({
-      title: newPost.title, slug: generateSlug(newPost.title), content: newPost.content,
-      excerpt: newPost.excerpt || null, author_id: user!.id, published: true, published_at: new Date().toISOString(),
+      title: newPost.title,
+      slug: generateSlug(newPost.title),
+      content: newPost.content,
+      excerpt: newPost.excerpt || null,
+      cover_image_url: newPost.cover_image_url || null,
+      author_id: user!.id,
+      published: true,
+      published_at: new Date().toISOString(),
     }).select("id").single();
     if (error) { toast.error("Failed to create post"); }
     else {
       toast.success("Post created!");
-      setNewPost({ title: "", content: "", excerpt: "" });
+      setNewPost(emptyBlogPost);
       setIsCreatingPost(false);
       fetchPosts();
       if (inserted?.id) {
@@ -169,7 +184,10 @@ const Admin = () => {
     if (!editingPost) return;
     setIsSavingPost(true);
     const { error } = await supabase.from("blog_posts").update({
-      title: editingPost.title, content: editingPost.content, excerpt: editingPost.excerpt,
+      title: editingPost.title,
+      content: editingPost.content,
+      excerpt: editingPost.excerpt,
+      cover_image_url: editingPost.cover_image_url || null,
     }).eq("id", editingPost.id);
     if (error) { toast.error("Failed to update post"); }
     else {
@@ -273,24 +291,30 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6 pb-24">
+    <div className="h-[100dvh] flex flex-col overflow-hidden bg-background">
       <div className="star-field" />
-      <div className="max-w-4xl mx-auto relative z-10">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </button>
+      <div className="max-w-4xl mx-auto relative z-10 flex flex-col flex-1 min-h-0 w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          <Tabs defaultValue="settings" className="flex flex-col flex-1 min-h-0 w-full">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+              <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/40 px-4 sm:px-6 pt-4 sm:pt-6 pb-3">
+                <button
+                  onClick={() => navigate("/")}
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Home
+                </button>
 
-          <h1 className="font-display text-3xl font-bold mb-8">
-            Admin <span className="text-gradient-unc">Dashboard</span>
-          </h1>
+                <h1 className="font-display text-2xl sm:text-3xl font-bold mb-4">
+                  Admin <span className="text-gradient-unc">Dashboard</span>
+                </h1>
 
-          <Tabs defaultValue="settings" className="w-full">
-            <TabsList className="mb-6 flex flex-wrap gap-1 h-auto">
+                <TabsList className="flex flex-wrap gap-1 h-auto w-full justify-start">
               <TabsTrigger value="settings" className="gap-1.5 text-xs">
                 <Settings className="w-3.5 h-3.5" /> Site
               </TabsTrigger>
@@ -322,7 +346,9 @@ const Admin = () => {
                 <Brain className="w-3.5 h-3.5" /> AI
               </TabsTrigger>
             </TabsList>
+              </div>
 
+              <div className="px-4 sm:px-6 pb-20 pt-4 [&_[role=tabpanel]]:!mt-0">
             {/* ── Site Settings ── */}
             <TabsContent value="settings">
               <SiteSettingsTab token={token} />
@@ -420,9 +446,7 @@ const Admin = () => {
                     <h3 className="font-display font-semibold">New Post</h3>
                     <Button variant="ghost" size="icon" onClick={() => setIsCreatingPost(false)}><X className="w-4 h-4" /></Button>
                   </div>
-                  <Input placeholder="Post Title" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} className="bg-secondary/30" />
-                  <Input placeholder="Excerpt (optional)" value={newPost.excerpt} onChange={(e) => setNewPost({ ...newPost, excerpt: e.target.value })} className="bg-secondary/30" />
-                  <Textarea placeholder="Post Content" value={newPost.content} onChange={(e) => setNewPost({ ...newPost, content: e.target.value })} className="bg-secondary/30 min-h-[200px]" />
+                  <BlogEditor values={newPost} onChange={setNewPost} token={token} autoFocus />
                   <Button onClick={handleCreatePost} disabled={isSavingPost}>
                     {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     Publish Post
@@ -437,9 +461,28 @@ const Admin = () => {
                     <h3 className="font-display font-semibold">Edit Post</h3>
                     <Button variant="ghost" size="icon" onClick={() => setEditingPost(null)}><X className="w-4 h-4" /></Button>
                   </div>
-                  <Input value={editingPost.title} onChange={(e) => setEditingPost({ ...editingPost, title: e.target.value })} className="bg-secondary/30" />
-                  <Input placeholder="Excerpt" value={editingPost.excerpt || ""} onChange={(e) => setEditingPost({ ...editingPost, excerpt: e.target.value })} className="bg-secondary/30" />
-                  <Textarea value={editingPost.content} onChange={(e) => setEditingPost({ ...editingPost, content: e.target.value })} className="bg-secondary/30 min-h-[200px]" />
+                  <BlogEditor
+                    values={{
+                      title: editingPost.title,
+                      excerpt: editingPost.excerpt ?? "",
+                      content: editingPost.content,
+                      cover_image_url: editingPost.cover_image_url ?? "",
+                    }}
+                    onChange={(next) =>
+                      setEditingPost((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              title: next.title,
+                              excerpt: next.excerpt || null,
+                              content: next.content,
+                              cover_image_url: next.cover_image_url || null,
+                            }
+                          : null
+                      )
+                    }
+                    token={token}
+                  />
                   <Button onClick={handleUpdatePost} disabled={isSavingPost}>
                     {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     Save Changes
@@ -448,10 +491,31 @@ const Admin = () => {
               )}
               <div className="space-y-3">
                 {posts.map((post) => (
-                  <div key={post.id} className="glass-panel p-4 flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold">{post.title}</h4>
-                      <p className="text-sm text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</p>
+                  <div key={post.id} className="glass-panel p-4 flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1 flex items-center gap-4">
+                      {post.cover_image_url ? (
+                        <a
+                          href={post.cover_image_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-24 h-16 rounded-md overflow-hidden border border-border/40 shrink-0"
+                        >
+                          <img
+                            src={post.cover_image_url}
+                            alt={`${post.title} cover`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      ) : (
+                        <div className="w-24 h-16 rounded-md border border-dashed border-border/40 shrink-0 flex items-center justify-center text-[10px] text-muted-foreground">
+                          No cover
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="font-semibold">{post.title}</h4>
+                        <p className="text-sm text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Button variant="ghost" size="icon" onClick={() => setEditingPost(post)}><Edit className="w-4 h-4" /></Button>
@@ -511,6 +575,8 @@ const Admin = () => {
                 )}
               </div>
             </TabsContent>
+              </div>
+            </div>
           </Tabs>
         </motion.div>
       </div>

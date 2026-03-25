@@ -129,6 +129,41 @@ export async function ragSync(body) {
     blogRows = data ?? [];
   }
 
+  // Ensure blog posts have backing ai_knowledge rows so chunk inserts satisfy FK.
+  // ai_knowledge_chunks.knowledge_id must reference ai_knowledge.id (not blog_posts.id).
+  const blogKnowledgeBySourceId = new Map();
+  if ((mode === "full" || mode === "blog") && blogRows.length) {
+    const blogIds = blogRows.map((p) => p.id);
+    const { data: existingBlogKnowledge, error: blogKnowledgeErr } = await sb
+      .from("ai_knowledge")
+      .select("id, source_id")
+      .eq("type", "blog")
+      .in("source_id", blogIds);
+    if (blogKnowledgeErr) throw blogKnowledgeErr;
+
+    for (const row of existingBlogKnowledge ?? []) {
+      if (row?.source_id && !blogKnowledgeBySourceId.has(row.source_id)) {
+        blogKnowledgeBySourceId.set(row.source_id, row.id);
+      }
+    }
+
+    for (const p of blogRows) {
+      if (blogKnowledgeBySourceId.has(p.id)) continue;
+      const { data: inserted, error: insertErr } = await sb
+        .from("ai_knowledge")
+        .insert({
+          type: "blog",
+          title: p.title,
+          content: p.excerpt ?? p.content?.slice(0, 3000) ?? "",
+          source_id: p.id,
+        })
+        .select("id")
+        .single();
+      if (insertErr) throw insertErr;
+      blogKnowledgeBySourceId.set(p.id, inserted.id);
+    }
+  }
+
   // Clear existing chunks for targeted sources
   if (knowledgeIds.length) {
     await sb.from("ai_knowledge_chunks").delete().eq("source_type", "ai_knowledge").in("knowledge_id", knowledgeIds);
@@ -162,13 +197,15 @@ export async function ragSync(body) {
   }
 
   for (const p of blogRows) {
+    const knowledgeId = blogKnowledgeBySourceId.get(p.id);
+    if (!knowledgeId) continue;
     const content = `${p.title}\n\n${p.excerpt ?? ""}\n\n${p.content}`;
     const chunks = chunkText(content);
     if (!chunks.length) continue;
     const embeddings = await embedOpenAI(chunks, openaiKey, embedModel);
     for (let i = 0; i < chunks.length; i++) {
       inserts.push({
-        knowledge_id: p.id, // blog post ids are UUIDs; satisfies NOT NULL
+        knowledge_id: knowledgeId,
         source_type: "blog_posts",
         source_id: p.id,
         chunk_index: i,

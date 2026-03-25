@@ -23,7 +23,8 @@ const sectionCoordinates: Record<string, { rotation: { x: number; y: number }; c
   skills: { rotation: { x: -0.3, y: 2.2 }, camera: { x: 1, y: -1, z: 4 } },
   contact: { rotation: { x: 0.4, y: 3.5 }, camera: { x: -1, y: 1.5, z: 4 } },
   resume: { rotation: { x: -0.2, y: 4.8 }, camera: { x: 0, y: -0.5, z: 4.5 } },
-  blog: { rotation: { x: 0, y: 0 }, camera: { x: 0, y: 8, z: 3 } },
+  // Keep the globe inside the same canvas; "zoom out" effect via camera distance.
+  blog: { rotation: { x: 0, y: 0 }, camera: { x: 0, y: 6, z: 8 } },
   ai: { rotation: { x: 0.1, y: 1.5 }, camera: { x: 3, y: 0, z: 3 } },
 };
 
@@ -89,6 +90,76 @@ const ContextLossHandler = () => {
       canvas.removeEventListener("webglcontextrestored", handleRestored);
     };
   }, [gl]);
+  return null;
+};
+
+/**
+ * Fixes occasional “black padding” (canvas size mismatch) after tab switch / return.
+ * We force a re-measure and re-apply canvas size on visibility/focus and container resize.
+ */
+const CanvasResizeFix = () => {
+  const { gl, invalidate, size } = useThree();
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    const apply = () => {
+      // Important: use layout size (clientWidth/clientHeight) instead of boundingClientRect,
+      // because bounding rect includes CSS transforms (scale/translate), which we apply while
+      // animating the blog overlay and can cause the canvas to stay undersized.
+      const w0 = parent.clientWidth;
+      const h0 = parent.clientHeight;
+      const rect = parent.getBoundingClientRect();
+      const w = Math.max(1, Math.round(w0 || rect.width || 1));
+      const h = Math.max(1, Math.round(h0 || rect.height || 1));
+
+      // Only set when needed; avoids extra work on every event.
+      if (w !== size.width || h !== size.height) {
+        gl.setSize(w, h, false);
+      }
+      invalidate();
+    };
+
+    const scheduleApply = () => {
+      requestAnimationFrame(() => apply());
+    };
+
+    // Initial measure after mount.
+    const raf = requestAnimationFrame(() => {
+      apply();
+    });
+
+    const ro = new ResizeObserver(() => {
+      // Defer to next frame to let layout settle.
+      requestAnimationFrame(() => apply());
+    });
+    ro.observe(parent);
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      // Let the browser finish any layout changes triggered by returning to the tab.
+      setTimeout(() => apply(), 0);
+    };
+
+    window.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener("resize", scheduleApply);
+    window.addEventListener("orientationchange", scheduleApply);
+    document.addEventListener("fullscreenchange", scheduleApply);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("resize", scheduleApply);
+      window.removeEventListener("orientationchange", scheduleApply);
+      document.removeEventListener("fullscreenchange", scheduleApply);
+    };
+  }, [gl, invalidate, size.width, size.height]);
+
   return null;
 };
 
@@ -221,7 +292,7 @@ const GlobeScene = (props: GlobeSceneProps) => {
     <div
       className={cn(
         "absolute inset-0 transition-transform duration-700 ease-out",
-        props.activeSection === "blog" ? "translate-y-[65vh] scale-[0.9]" : "translate-y-0 scale-100"
+        "translate-y-0 scale-100"
       )}
     >
       <div
@@ -242,6 +313,7 @@ const GlobeScene = (props: GlobeSceneProps) => {
         >
           <Suspense fallback={null}>
             <GlobeContent {...props} onGlobeReady={handleGlobeReady} />
+            <CanvasResizeFix />
           </Suspense>
         </Canvas>
       </div>

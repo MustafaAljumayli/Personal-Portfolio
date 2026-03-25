@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import BlogArticleBody from "@/components/Blog/BlogArticleBody";
+import { estimateReadMinutesMarkdown } from "@/lib/blogReadTime";
 
 interface BlogPost {
   id: string;
@@ -81,39 +83,44 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                   Back to Blog
                 </button>
 
-                <article className="glass-panel p-8">
+                <article className="glass-panel p-4 sm:p-8 flex flex-col gap-4">
                   {selectedPost.cover_image_url && (
-                    <div className="w-full h-48 rounded-lg overflow-hidden mb-6">
+                    <div className="order-1 md:order-3 w-full h-44 sm:h-52 md:h-64 rounded-lg overflow-hidden bg-secondary/30 flex items-center justify-center">
                       <img
                         src={selectedPost.cover_image_url}
                         alt={selectedPost.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
+                        loading="lazy"
                       />
                     </div>
                   )}
 
-                  <h1 className="font-display text-3xl md:text-4xl font-bold mb-4">
+                  <h1
+                    className={`font-display text-2xl sm:text-3xl md:text-4xl font-bold ${selectedPost.cover_image_url ? "order-2 md:order-1" : ""}`}
+                  >
                     {selectedPost.title}
                   </h1>
 
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-8">
+                  <div
+                    className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-muted-foreground ${selectedPost.cover_image_url ? "order-3 md:order-2" : ""}`}
+                  >
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
                       {formatDate(selectedPost.published_at || selectedPost.created_at)}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {Math.ceil(selectedPost.content.length / 1000)} min read
+                      {estimateReadMinutesMarkdown(selectedPost.content)} min read
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      <span>Author: Mustafa Aljumayli</span>
                     </span>
                   </div>
-
-                  <div className="prose prose-invert max-w-none">
-                    {selectedPost.content.split("\n").map((paragraph, index) => (
-                      <p key={index} className="mb-4 text-foreground/90">
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
+                  <BlogArticleBody
+                    content={selectedPost.content}
+                    className={`prose prose-invert prose-lg max-w-none text-foreground/90 [&_p]:leading-[1.75] ${selectedPost.cover_image_url ? "order-4" : ""}`}
+                  />
                 </article>
               </motion.div>
             ) : (
@@ -171,9 +178,9 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                         onClick={() => setSelectedPost(post)}
                         className="glass-panel p-6 cursor-pointer hover:border-primary/50 transition-all group"
                       >
-                        <div className="flex gap-6">
+                        <div className="flex flex-col gap-4 md:flex-row md:gap-6 md:items-start">
                           {post.cover_image_url && (
-                            <div className="w-32 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                            <div className="w-full h-40 md:w-32 md:h-24 rounded-lg overflow-hidden flex-shrink-0">
                               <img
                                 src={post.cover_image_url}
                                 alt={post.title}
@@ -181,7 +188,7 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                               />
                             </div>
                           )}
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <h3 className="font-display text-xl font-semibold group-hover:text-primary transition-colors">
                               {post.title}
                             </h3>

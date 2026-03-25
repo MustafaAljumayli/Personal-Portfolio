@@ -215,3 +215,10 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.7);
 }
+
+/* Blog: clear floats after article body (images with float-left / float-right) */
+.blog-article-clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}

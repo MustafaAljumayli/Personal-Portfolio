@@ -66,23 +66,23 @@ const ContactContent = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-sm sm:text-base">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
+        <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
           Get In <span className="text-gradient-unc">Touch</span>
         </h2>
-        <p className="text-muted-foreground">Let's build something amazing together</p>
+        <p className="text-muted-foreground text-xs sm:text-sm">Let's build something amazing together</p>
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-2 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3"
       >
         {socialLinks.map((link) => {
           const Icon = link.icon;
@@ -92,12 +92,12 @@ const ContactContent = () => {
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors group"
+              className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors group min-w-0"
             >
-              <Icon className="w-5 h-5 text-primary" />
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">{link.label}</span>
-                <span className="text-sm font-medium group-hover:text-primary transition-colors">{link.value}</span>
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] sm:text-xs text-muted-foreground">{link.label}</span>
+                <span className="text-xs sm:text-sm font-medium group-hover:text-primary transition-colors break-words">{link.value}</span>
               </div>
             </a>
           );
@@ -109,15 +109,15 @@ const ContactContent = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         onSubmit={handleSubmit}
-        className="space-y-4"
+        className="space-y-3 sm:space-y-4"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <Input
             placeholder="Your Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="bg-secondary/30 border-border/50"
+            className="bg-secondary/30 border-border/50 text-sm h-9 sm:h-10"
           />
           <Input
             type="email"
@@ -125,7 +125,7 @@ const ContactContent = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="bg-secondary/30 border-border/50"
+            className="bg-secondary/30 border-border/50 text-sm h-9 sm:h-10"
           />
         </div>
         <Textarea
@@ -134,7 +134,7 @@ const ContactContent = () => {
           onChange={(e) => setMessage(e.target.value)}
           required
           rows={4}
-          className="bg-secondary/30 border-border/50 resize-none"
+          className="bg-secondary/30 border-border/50 resize-none text-sm min-h-[100px]"
         />
         <Button
           type="submit"
