@@ -2,7 +2,6 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { isMobileDevice } from "@/lib/device";
-import { useDeferredKtx2Upgrade } from "@/hooks/useDeferredKtx2Upgrade";
 import { useKtx2SuspenseTexture } from "@/hooks/useKtx2SuspenseTexture";
 import { useBasicTexture } from "@/hooks/useBasicTexture";
 
@@ -15,17 +14,8 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
     texture.anisotropy = isMobile ? 2 : 4;
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
-    const compressed =
-      "isCompressedTexture" in texture &&
-      (texture as THREE.CompressedTexture).isCompressedTexture === true;
-    // Mobile + GPU-compressed: negative repeat (mirror in U) is unreliable and can sample black.
-    if (isMobile && compressed) {
-      texture.repeat.set(1, 1);
-      texture.offset.set(0, 0);
-    } else {
-      texture.repeat.set(-1, 1);
-      texture.offset.set(0, 0);
-    }
+    texture.repeat.set(-1, 1);
+    texture.offset.set(0, 0);
     texture.needsUpdate = true;
   }, [texture, isMobile]);
 
@@ -43,8 +33,9 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
         side={THREE.BackSide}
         depthWrite={false}
         toneMapped={false}
-        opacity={0.9}
-        transparent
+        // Mobile: opaque sky avoids compressed/alpha quirks; KTX2 swap was turning the scene black.
+        opacity={isMobile ? 1 : 0.9}
+        transparent={!isMobile}
       />
     </mesh>
   );
@@ -52,15 +43,8 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
 
 const MobileMilkyWay = () => {
   const isMobile = true;
-  const low = useBasicTexture("/mobile/8k_stars_milky_way.jpg");
-  // Use 4K KTX2 on mobile (not desktop8k). Rebuild `dist` after edits — `npm run start` serves stale bundles.
-  const texture = useDeferredKtx2Upgrade({
-    enabled: true,
-    low,
-    highUrl: "/ktx2/mobile4k/stars_4k.ktx2",
-    flipV: true,
-    priority: 40,
-  });
+  // JPG only: deferred KTX2 swap reliably produced a black sky on mobile (GPU/driver + BasicMaterial).
+  const texture = useBasicTexture("/mobile/8k_stars_milky_way.jpg");
   return <MilkyWayShared isMobile={isMobile} texture={texture} />;
 };
 
