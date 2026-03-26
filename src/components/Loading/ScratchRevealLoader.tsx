@@ -215,7 +215,7 @@ export default function ScratchRevealLoader({ enabled = true, done, radius = 30 
       />
 
       {/* black overlay you "erase" */}
-      <canvas ref={canvasRef} className="absolute inset-0 cursor-none" />
+      <canvas ref={canvasRef} className="absolute inset-0" />
 
       {/* copy + progress (doesn't intercept pointer events) */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-white/90 px-6 pointer-events-none">

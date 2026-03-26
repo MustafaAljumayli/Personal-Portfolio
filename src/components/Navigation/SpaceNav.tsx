@@ -59,7 +59,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-10
+                     flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-10
                     ${isActive
                       ? "bg-primary/20 text-primary glow-text"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
@@ -67,7 +67,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                   `}
                 >
                   <Icon className="w-4 h-4" />
-                  {item.label}
+                  <span>{item.label}</span>
                 </button>
               );
             })}
@@ -83,7 +83,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                     className="flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
                   >
                     <Shield className="w-4 h-4" />
-                    Admin
+                    <span>Admin</span>
                   </Link>
                 )}
                 <button
@@ -91,7 +91,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                   className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
-                  Sign Out
+                  <span>Sign Out</span>
                 </button>
               </>
             ) : (
@@ -100,7 +100,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
               >
                 <LogIn className="w-4 h-4" />
-                Sign In
+                <span>Sign In</span>
               </Link>
             )}
           </div>
@@ -137,7 +137,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className={`
-                      flex items-center gap-3 px-6 py-3 rounded-lg text-lg font-medium w-full max-w-xs transition-all
+                       flex items-center gap-3 px-6 py-3 rounded-lg text-lg font-medium w-full max-w-xs transition-all
                       ${isActive
                         ? "bg-primary/20 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
@@ -145,7 +145,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                     `}
                   >
                     <Icon className="w-5 h-5" />
-                    {item.label}
+                    <span>{item.label}</span>
                   </motion.button>
                 );
               })}
@@ -160,7 +160,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                         onClick={() => setIsMobileOpen(false)}
                       >
                         <Shield className="w-5 h-5" />
-                        Admin Dashboard
+                        <span>Admin Dashboard</span>
                       </Link>
                     )}
                     <button
@@ -168,7 +168,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                       className="flex items-center gap-3 px-6 py-3 text-muted-foreground w-full max-w-xs"
                     >
                       <LogOut className="w-5 h-5" />
-                      Sign Out
+                      <span>Sign Out</span>
                     </button>
                   </>
                 ) : (
@@ -178,7 +178,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                     onClick={() => setIsMobileOpen(false)}
                   >
                     <LogIn className="w-5 h-5" />
-                    Sign In
+                    <span>Sign In</span>
                   </Link>
                 )}
               </div>

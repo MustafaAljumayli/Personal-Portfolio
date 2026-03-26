@@ -108,8 +108,40 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
+    cursor: url("/astronaut--cursor.png") 2 2, auto !important;
   }
 
+  /* Binary cursor policy:
+     - default cursor everywhere
+     - pointer cursor only on interactive elements */
+  * {
+    cursor: url("/astronaut--cursor.png") 2 2, auto !important;
+  }
+
+  :where(
+    a,
+    button,
+    summary,
+    label,
+    input,
+    textarea,
+    select,
+    option,
+    [onclick],
+    [tabindex]:not([tabindex="-1"]),
+    [role="button"],
+    [role="link"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [contenteditable="true"]
+  ) {
+    cursor: url("/astronaut--pointer.png") 3 3, pointer !important;
+  }
+  
   h1,
   h2,
   h3,

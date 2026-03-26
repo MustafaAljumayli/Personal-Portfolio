@@ -18,6 +18,12 @@ export default {
         display: ['Google Sans', 'sans-serif'],
         body: ['Google Sans', 'sans-serif'],
       },
+      cursor: {
+        auto: "url('/astronaut--cursor.png') 2 2, auto",
+        default: "url('/astronaut--cursor.png') 2 2, auto",
+        text: "url('/astronaut--cursor.png') 2 2, auto",
+        pointer: "url('/astronaut--pointer.png') 3 3, pointer",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
