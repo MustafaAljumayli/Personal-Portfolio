@@ -2,6 +2,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { isMobileDevice } from "@/lib/device";
+import { useDeferredKtx2Upgrade } from "@/hooks/useDeferredKtx2Upgrade";
 import { useKtx2SuspenseTexture } from "@/hooks/useKtx2SuspenseTexture";
 import { useBasicTexture } from "@/hooks/useBasicTexture";
 
@@ -43,8 +44,15 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
 
 const MobileMilkyWay = () => {
   const isMobile = true;
-  // JPG only: deferred KTX2 swap reliably produced a black sky on mobile (GPU/driver + BasicMaterial).
-  const texture = useBasicTexture("/mobile/8k_stars_milky_way.jpg");
+  const low = useBasicTexture("/mobile/2k_stars_milky_way.jpg");
+  // UASTC: ktx create --format R8G8B8_SRGB --assign-tf srgb --encode uastc --uastc-quality 4 <jpg> public/ktx2/mobile4k/2k_stars_milky_way.ktx2
+  const texture = useDeferredKtx2Upgrade({
+    enabled: true,
+    low,
+    highUrl: "/ktx2/mobile4k/2k_stars_milky_way.ktx2",
+    flipV: true,
+    priority: 40,
+  });
   return <MilkyWayShared isMobile={isMobile} texture={texture} />;
 };
 
