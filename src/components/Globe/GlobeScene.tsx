@@ -1,9 +1,10 @@
-import { Suspense, useRef, useEffect, useState, useCallback, memo } from "react";
+import { Suspense, useRef, useEffect, useState, useCallback, memo, useMemo } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { cn } from "@/lib/utils";
+import { isMobileDevice } from "@/lib/device";
 import Earth from "./Earth";
 import MilkyWay from "./MilkyWay";
 import { warmKtx2TranscoderForRenderer } from "@/hooks/useDeferredKtx2Upgrade";
@@ -111,8 +112,6 @@ const CanvasResizeFix = () => {
     const parent = canvas.parentElement;
     if (!parent) return;
 
-    let roRaf = 0;
-
     const apply = () => {
       // Important: use layout size (clientWidth/clientHeight) instead of boundingClientRect,
       // because bounding rect includes CSS transforms (scale/translate), which we apply while
@@ -135,24 +134,19 @@ const CanvasResizeFix = () => {
       }
     };
 
+    let scheduled = 0;
     const scheduleApply = () => {
-      requestAnimationFrame(() => apply());
+      if (scheduled) cancelAnimationFrame(scheduled);
+      scheduled = requestAnimationFrame(() => {
+        scheduled = 0;
+        apply();
+      });
     };
 
     // Initial measure after mount (size may match; apply only invalidates if setSize ran).
     const raf = requestAnimationFrame(() => {
       apply();
     });
-
-    const ro = new ResizeObserver(() => {
-      // Coalesce bursts (Chrome can fire many resize observations per frame).
-      if (roRaf) cancelAnimationFrame(roRaf);
-      roRaf = requestAnimationFrame(() => {
-        roRaf = 0;
-        apply();
-      });
-    });
-    ro.observe(parent);
 
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
@@ -168,8 +162,7 @@ const CanvasResizeFix = () => {
 
     return () => {
       cancelAnimationFrame(raf);
-      if (roRaf) cancelAnimationFrame(roRaf);
-      ro.disconnect();
+      if (scheduled) cancelAnimationFrame(scheduled);
       window.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
       window.removeEventListener("resize", scheduleApply);
@@ -189,6 +182,10 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
   const isPointerDownRef = useRef(false);
 
   useEffect(() => {
+    // Avoid creating an extra deferred KTX2Loader on desktop.
+    // Desktop uses Suspense-based KTX2 loading; warming deferred on desktop can overlap init
+    // across multiple loader instances and trigger THREE's "Multiple active KTX2 loaders" warning.
+    if (!isMobileDevice()) return;
     warmKtx2TranscoderForRenderer(gl);
   }, [gl]);
   const hasSignaledGlobeReadyRef = useRef(false);
@@ -302,6 +299,11 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
 
 const GlobeScene = memo(function GlobeScene(props: GlobeSceneProps) {
   const [globeReady, setGlobeReady] = useState(false);
+  const desynchronized = useMemo(() => {
+    // Chrome Desktop: `desynchronized` can cause uneven frame pacing (micro-stutter).
+    // Mobile browsers tend to benefit more from reduced input latency.
+    return isMobileDevice();
+  }, []);
 
   const handleGlobeReady = useCallback(() => {
     setGlobeReady(true);
@@ -327,7 +329,7 @@ const GlobeScene = memo(function GlobeScene(props: GlobeSceneProps) {
             antialias: false,
             alpha: false,
             // Chromium: low-latency canvas (not in R3F types yet). Safari ignores if unsupported.
-            ...({ desynchronized: true } as Record<string, unknown>),
+            ...({ desynchronized } as Record<string, unknown>),
             powerPreference: "high-performance",
             failIfMajorPerformanceCaveat: false,
             stencil: false,

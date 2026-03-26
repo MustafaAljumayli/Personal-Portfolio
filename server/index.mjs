@@ -628,6 +628,9 @@ const distDir = path.join(projectRoot, "dist");
 const distIndex = path.join(distDir, "index.html");
 
 if (fs.existsSync(distIndex)) {
+  console.warn(
+    "[static] Serving ./dist — run `npm run build` after changing React/source; stale dist causes old Router/KTX2/preload behavior."
+  );
   app.use(express.static(distDir));
   app.get("*", (_req, res) => res.sendFile(distIndex));
 }

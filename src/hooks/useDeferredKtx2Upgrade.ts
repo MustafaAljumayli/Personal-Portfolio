@@ -17,6 +17,10 @@ function log(...args: unknown[]) {
   console.log(...args);
 }
 
+/** Idle spacing so Basis transcoding + GPU uploads don’t stack (desktop felt janky when tight). */
+const MS_BEFORE_FIRST_DEFERRED_JOB = 750;
+const MS_BETWEEN_DEFERRED_JOBS = 2200;
+
 type UpgradeJob = {
   key: string;
   priority: number;
@@ -88,7 +92,7 @@ function drainQueue(loader: KTX2Loader) {
                 limit
               );
               hi.dispose();
-              requestIdle(step, 1200);
+              requestIdle(step, MS_BETWEEN_DEFERRED_JOBS);
               return;
             }
             hi.flipY = false;
@@ -99,7 +103,7 @@ function drainQueue(loader: KTX2Loader) {
             requestAnimationFrame(() => job.onReady(hi));
 
             // Start the next download only after this one finished.
-            requestIdle(step, 1200);
+            requestIdle(step, MS_BETWEEN_DEFERRED_JOBS);
           },
           undefined,
           (err) => {
@@ -109,13 +113,13 @@ function drainQueue(loader: KTX2Loader) {
             log("[KTX2 upgrade] load error", job.highUrl);
 
             // Continue queue even if this one fails.
-            requestIdle(step, 1200);
+            requestIdle(step, MS_BETWEEN_DEFERRED_JOBS);
           }
         );
       });
   };
 
-  requestIdle(step, 500);
+  requestIdle(step, MS_BEFORE_FIRST_DEFERRED_JOB);
 }
 
 function shouldAttemptHighRes(): boolean {

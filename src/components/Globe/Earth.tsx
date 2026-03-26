@@ -273,7 +273,9 @@ const DesktopEarth = (props: EarthProps) => {
 };
 
 const Earth = (props: EarthProps) => {
-  const mobile = isMobileDevice();
+  // Stabilize the decision once at mount time to avoid briefly mounting both mobile/desktop
+  // texture paths (which can overlap KTX2Loader.init() across loaders).
+  const mobile = useMemo(() => isMobileDevice(), []);
   return mobile ? <MobileEarth {...props} /> : <DesktopEarth {...props} />;
 };
 

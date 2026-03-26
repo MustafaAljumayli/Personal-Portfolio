@@ -63,7 +63,10 @@ const DesktopMilkyWay = () => {
 };
 
 const MilkyWay = () => {
-  const mobile = isMobileDevice();
+  // Stabilize the decision once at mount time. If `window.innerWidth` changes during initial layout,
+  // we can temporarily mount both mobile+desktop texture paths and trigger THREE's KTX2Loader
+  // "Multiple active KTX2 loaders" warning.
+  const mobile = useMemo(() => isMobileDevice(), []);
   return mobile ? <MobileMilkyWay /> : <DesktopMilkyWay />;
 };
 
