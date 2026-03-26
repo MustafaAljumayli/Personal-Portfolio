@@ -108,14 +108,14 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
-    cursor: url("/astronaut--cursor.png") 2 2, auto !important;
+    cursor: url("/astronaut--cursor.png") 0 20, auto !important;
   }
 
   /* Binary cursor policy:
      - default cursor everywhere
      - pointer cursor only on interactive elements */
   * {
-    cursor: url("/astronaut--cursor.png") 2 2, auto !important;
+    cursor: url("/astronaut--cursor.png") 0 20, auto !important;
   }
 
   :where(
@@ -124,8 +124,14 @@
     summary,
     label,
     input,
+    span,
+    img,
+    text,
     textarea,
     select,
+    svg,
+    path,
+    p,
     option,
     [onclick],
     [tabindex]:not([tabindex="-1"]),
@@ -139,7 +145,7 @@
     [role="switch"],
     [contenteditable="true"]
   ) {
-    cursor: url("/astronaut--pointer.png") 3 3, pointer !important;
+    cursor: url("/astronaut--pointer.png") 0 20, pointer !important;
   }
   
   h1,
