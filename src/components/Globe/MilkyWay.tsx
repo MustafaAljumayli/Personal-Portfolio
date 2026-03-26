@@ -15,7 +15,18 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
     texture.anisotropy = isMobile ? 2 : 4;
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.repeat.set(-1, 1);
+    const compressed =
+      "isCompressedTexture" in texture &&
+      (texture as THREE.CompressedTexture).isCompressedTexture === true;
+    // Mobile + GPU-compressed: negative repeat (mirror in U) is unreliable and can sample black.
+    if (isMobile && compressed) {
+      texture.repeat.set(1, 1);
+      texture.offset.set(0, 0);
+    } else {
+      texture.repeat.set(-1, 1);
+      texture.offset.set(0, 0);
+    }
+    texture.needsUpdate = true;
   }, [texture, isMobile]);
 
   useFrame((state) => {
@@ -42,7 +53,7 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
 const MobileMilkyWay = () => {
   const isMobile = true;
   const low = useBasicTexture("/mobile/8k_stars_milky_way.jpg");
-  // Desktop 8K KTX2 often exceeds mobile maxTextureSize (4096) → invalid upload / black sky.
+  // Use 4K KTX2 on mobile (not desktop8k). Rebuild `dist` after edits — `npm run start` serves stale bundles.
   const texture = useDeferredKtx2Upgrade({
     enabled: true,
     low,
