@@ -5,6 +5,8 @@ export interface Project {
   tech: string[];
   githubUrl?: string | null;
   liveUrl?: string | null;
+  /** Public URL (e.g. from admin image upload). */
+  imageUrl?: string | null;
 }
 
 export const projects: Project[] = [

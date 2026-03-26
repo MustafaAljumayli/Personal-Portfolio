@@ -1,12 +1,12 @@
-import { Suspense, useRef, useEffect, useState, useCallback } from "react";
+import { Suspense, useRef, useEffect, useState, useCallback, memo } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { cn } from "@/lib/utils";
-import { isMobileDevice } from "@/lib/device";
 import Earth from "./Earth";
 import MilkyWay from "./MilkyWay";
+import { warmKtx2TranscoderForRenderer } from "@/hooks/useDeferredKtx2Upgrade";
 
 interface GlobeSceneProps {
   activeSection: string | null;
@@ -60,7 +60,9 @@ const CameraController = ({
   useFrame((_, delta) => {
     if (arrived.current) return;
 
-    camera.position.lerp(targetPosition.current, delta * 2);
+    // Framerate-independent smoothstep toward target (avoids choppy lerp at variable dt).
+    const t = 1 - Math.exp(-delta * 2.15);
+    camera.position.lerp(targetPosition.current, t);
     camera.lookAt(0, 0, 0);
 
     if (camera.position.distanceTo(targetPosition.current) < 0.1) {
@@ -99,11 +101,17 @@ const ContextLossHandler = () => {
  */
 const CanvasResizeFix = () => {
   const { gl, invalidate, size } = useThree();
+  const didInitialInvalidate = useRef(false);
+  /** Avoid [size] in effect deps — Chromium + R3F can churn size and re-run this effect (observer churn). */
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
 
   useEffect(() => {
     const canvas = gl.domElement;
     const parent = canvas.parentElement;
     if (!parent) return;
+
+    let roRaf = 0;
 
     const apply = () => {
       // Important: use layout size (clientWidth/clientHeight) instead of boundingClientRect,
@@ -115,25 +123,34 @@ const CanvasResizeFix = () => {
       const w = Math.max(1, Math.round(w0 || rect.width || 1));
       const h = Math.max(1, Math.round(h0 || rect.height || 1));
 
-      // Only set when needed; avoids extra work on every event.
-      if (w !== size.width || h !== size.height) {
+      const { width: sw, height: sh } = sizeRef.current;
+      const changed = w !== sw || h !== sh;
+      if (changed) {
         gl.setSize(w, h, false);
+        invalidate();
+      } else if (!didInitialInvalidate.current) {
+        // First layout pass after mount — ensure one sync if R3F size already matched.
+        didInitialInvalidate.current = true;
+        invalidate();
       }
-      invalidate();
     };
 
     const scheduleApply = () => {
       requestAnimationFrame(() => apply());
     };
 
-    // Initial measure after mount.
+    // Initial measure after mount (size may match; apply only invalidates if setSize ran).
     const raf = requestAnimationFrame(() => {
       apply();
     });
 
     const ro = new ResizeObserver(() => {
-      // Defer to next frame to let layout settle.
-      requestAnimationFrame(() => apply());
+      // Coalesce bursts (Chrome can fire many resize observations per frame).
+      if (roRaf) cancelAnimationFrame(roRaf);
+      roRaf = requestAnimationFrame(() => {
+        roRaf = 0;
+        apply();
+      });
     });
     ro.observe(parent);
 
@@ -151,6 +168,7 @@ const CanvasResizeFix = () => {
 
     return () => {
       cancelAnimationFrame(raf);
+      if (roRaf) cancelAnimationFrame(roRaf);
       ro.disconnect();
       window.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
@@ -158,7 +176,7 @@ const CanvasResizeFix = () => {
       window.removeEventListener("orientationchange", scheduleApply);
       document.removeEventListener("fullscreenchange", scheduleApply);
     };
-  }, [gl, invalidate, size.width, size.height]);
+  }, [gl, invalidate]);
 
   return null;
 };
@@ -169,6 +187,10 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { gl } = useThree();
   const isPointerDownRef = useRef(false);
+
+  useEffect(() => {
+    warmKtx2TranscoderForRenderer(gl);
+  }, [gl]);
   const hasSignaledGlobeReadyRef = useRef(false);
   const prevSectionRef = useRef<string | null>(null);
 
@@ -266,9 +288,8 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
           RIGHT: THREE.MOUSE.PAN,
         }}
       />
-      <ambientLight intensity={0.25} />
-      <directionalLight position={[5, 3, 5]} intensity={5.0} />
-      <pointLight position={[-10, -10, -10]} intensity={6} color="#4da6ff" />
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[5, 3, 5]} intensity={5.5} color="#ffffff" />
       <MilkyWay />
       <Earth
         isAutoRotating={!controlsLocked}
@@ -279,36 +300,39 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
   );
 };
 
-const GlobeScene = (props: GlobeSceneProps) => {
+const GlobeScene = memo(function GlobeScene(props: GlobeSceneProps) {
   const [globeReady, setGlobeReady] = useState(false);
-  const isMobile = isMobileDevice();
 
-  const handleGlobeReady = () => {
+  const handleGlobeReady = useCallback(() => {
     setGlobeReady(true);
     props.onGlobeReady?.();
-  };
+  }, [props.onGlobeReady]);
 
   return (
-    <div
-      className={cn(
-        "absolute inset-0 transition-transform duration-700 ease-out",
-        "translate-y-0 scale-100"
-      )}
-    >
+    <div className="absolute inset-0 translate-y-0 scale-100">
+      {/* Gentle reveal once the scene is ready */}
       <div
         className={cn(
-          "h-full w-full transition-all duration-700 ease-out transform-gpu will-change-transform",
-          globeReady ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-[0.98] blur-[2px]"
+          "isolate h-full w-full transition-opacity duration-1000 ease-out",
+          globeReady ? "opacity-100" : "opacity-0"
         )}
       >
         <Canvas
           camera={{ position: [0, 0, 6], fov: 45 }}
-          dpr={isMobile ? [1, 1.5] : [1, 2]}
-          performance={{ min: isMobile ? 0.5 : 0.75 }}
+          // Continuous loop: keeps WebGL in sync with Framer Motion / tab transitions (demand can drop frames).
+          frameloop="always"
+          // Cap DPR at 1.5× — sharp on Retina without paying full 2× fill rate.
+          dpr={[1, 1.5]}
           gl={{
-            antialias: !isMobile,
+            antialias: false,
+            alpha: false,
+            // Chromium: low-latency canvas (not in R3F types yet). Safari ignores if unsupported.
+            ...({ desynchronized: true } as Record<string, unknown>),
             powerPreference: "high-performance",
             failIfMajorPerformanceCaveat: false,
+            stencil: false,
+            depth: true,
+            preserveDrawingBuffer: false,
           }}
         >
           <Suspense fallback={null}>
@@ -319,6 +343,6 @@ const GlobeScene = (props: GlobeSceneProps) => {
       </div>
     </div>
   );
-};
+});
 
 export default GlobeScene;

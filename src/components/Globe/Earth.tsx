@@ -1,5 +1,5 @@
-import { useRef, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useRef, useMemo, useEffect } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { isMobileDevice } from "@/lib/device";
 import { useDeferredKtx2Upgrade } from "@/hooks/useDeferredKtx2Upgrade";
@@ -34,11 +34,19 @@ const EarthShared = ({
   const meshRef = useRef<THREE.Mesh>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
+  const rotationSettledRef = useRef(false);
+  const { gl } = useThree();
 
-  const SEGMENTS = isMobile ? 32 : 64;
+  // Earth: primary detail. Clouds/atmosphere: lower poly — fewer fragments on transparent layers.
+  const EARTH_R = 2;
+  /** Slightly above the globe to reduce z-fighting and read as a thin shell. */
+  const CLOUD_R = EARTH_R + 0.04;
+  const SEGMENTS = isMobile ? 28 : 32;
+  const CLOUD_SEG = isMobile ? 20 : 22;
+  const ATM_SEG = 16;
 
   useMemo(() => {
-    const aniso = isMobile ? 4 : 16;
+    const aniso = isMobile ? 4 : Math.min(8, gl.capabilities.getMaxAnisotropy());
 
     earthFinal.colorSpace = THREE.SRGBColorSpace;
     earthFinal.anisotropy = aniso;
@@ -69,7 +77,11 @@ const EarthShared = ({
     cloudsFinal.wrapS = THREE.RepeatWrapping;
     cloudsFinal.wrapT = THREE.ClampToEdgeWrapping;
     cloudsFinal.needsUpdate = true;
-  }, [earthFinal, nightFinal, bumpFinal, specFinal, cloudsFinal, isMobile]);
+  }, [earthFinal, nightFinal, bumpFinal, specFinal, cloudsFinal, isMobile, gl]);
+
+  useEffect(() => {
+    rotationSettledRef.current = false;
+  }, [targetRotation]);
 
   const atmosphereUniforms = useMemo(
     () => ({ glowColor: { value: new THREE.Color(0x4da6ff) } }),
@@ -82,9 +94,9 @@ const EarthShared = ({
     const clouds = cloudsRef.current;
 
     if (targetRotation) {
-      const lerpSpeed = 2 * delta;
-      mesh.rotation.x += (targetRotation.x - mesh.rotation.x) * lerpSpeed;
-      mesh.rotation.y += (targetRotation.y - mesh.rotation.y) * lerpSpeed;
+      const t = 1 - Math.exp(-delta * 1.85);
+      mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, targetRotation.x, t);
+      mesh.rotation.y = THREE.MathUtils.lerp(mesh.rotation.y, targetRotation.y, t);
       if (clouds) {
         clouds.rotation.x = mesh.rotation.x;
         clouds.rotation.y = mesh.rotation.y + 0.01;
@@ -92,10 +104,17 @@ const EarthShared = ({
 
       const distX = Math.abs(targetRotation.x - mesh.rotation.x);
       const distY = Math.abs(targetRotation.y - mesh.rotation.y);
-      if (distX < 0.01 && distY < 0.01 && onRotationComplete) {
-        onRotationComplete();
+      if (distX < 0.01 && distY < 0.01) {
+        if (!rotationSettledRef.current) {
+          rotationSettledRef.current = true;
+          onRotationComplete?.();
+        }
+      } else {
+        rotationSettledRef.current = false;
       }
+
     } else if (isAutoRotating) {
+      rotationSettledRef.current = false;
       mesh.rotation.y += delta * 0.1;
       if (clouds) {
         clouds.rotation.y += delta * 0.12;
@@ -106,7 +125,7 @@ const EarthShared = ({
   return (
     <group>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[2, SEGMENTS, SEGMENTS]} />
+        <sphereGeometry args={[EARTH_R, SEGMENTS, SEGMENTS]} />
         <meshStandardMaterial
           map={earthFinal}
           emissive={new THREE.Color("#ffffff")}
@@ -130,8 +149,9 @@ const EarthShared = ({
       </mesh>
 
       <mesh ref={cloudsRef}>
-        <sphereGeometry args={[2.015, SEGMENTS, SEGMENTS]} />
-        <meshStandardMaterial
+        <sphereGeometry args={[CLOUD_R, CLOUD_SEG, CLOUD_SEG]} />
+        {/* BasicMaterial: no lighting evaluation — much cheaper than Standard for a thin shell */}
+        <meshBasicMaterial
           color="#ffffff"
           alphaMap={cloudsFinal}
           transparent
@@ -141,7 +161,7 @@ const EarthShared = ({
       </mesh>
 
       <mesh ref={atmosphereRef} scale={1.08}>
-        <sphereGeometry args={[2, SEGMENTS, SEGMENTS]} />
+        <sphereGeometry args={[EARTH_R + 0.005, ATM_SEG, ATM_SEG]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -180,38 +200,39 @@ const MobileEarth = (props: EarthProps) => {
   const specLow = useBasicTexture(`${lowBase}8081_earthspec10k.jpg`);
   const cloudsLow = useBasicTexture(`${lowBase}8k_earth_clouds.jpg`);
 
+  // Same 8K KTX2 set as desktop; low-res JPG still shows first, then upgrades when ready.
   const earthFinal = useDeferredKtx2Upgrade({
     enabled: true,
     low: earthLow,
-    highUrl: "/ktx2/mobile4k/earth_day_4k.ktx2",
+    highUrl: "/ktx2/desktop8k/8k_earth_daymap.ktx2",
     flipV: true,
     priority: 0,
   });
   const nightFinal = useDeferredKtx2Upgrade({
     enabled: true,
     low: nightLow,
-    highUrl: "/ktx2/mobile4k/earth_night_4k.ktx2",
+    highUrl: "/ktx2/desktop8k/8k_earth_nightmap.ktx2",
     flipV: true,
     priority: 1,
   });
   const cloudsFinal = useDeferredKtx2Upgrade({
     enabled: true,
     low: cloudsLow,
-    highUrl: "/ktx2/mobile4k/earth_clouds_4k.ktx2",
+    highUrl: "/ktx2/desktop8k/8k_earth_clouds.ktx2",
     flipV: true,
     priority: 10,
   });
   const bumpFinal = useDeferredKtx2Upgrade({
     enabled: true,
     low: bumpLow,
-    highUrl: "/ktx2/mobile4k/earth_bump_4k.ktx2",
+    highUrl: "/ktx2/desktop8k/8081_earthbump10k.ktx2",
     flipV: true,
     priority: 20,
   });
   const specFinal = useDeferredKtx2Upgrade({
     enabled: true,
     low: specLow,
-    highUrl: "/ktx2/mobile4k/earth_spec_4k.ktx2",
+    highUrl: "/ktx2/desktop8k/8081_earthspec10k.ktx2",
     flipV: true,
     priority: 30,
   });
@@ -231,6 +252,7 @@ const MobileEarth = (props: EarthProps) => {
 
 const DesktopEarth = (props: EarthProps) => {
   const isMobile = false;
+  // Desktop: full 8K KTX2 set. Performance comes from on-demand rendering + idle, not from downgrading art.
   const earthFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_daymap.ktx2", { flipV: true });
   const nightFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8k_earth_nightmap.ktx2", { flipV: true });
   const bumpFinal = useKtx2SuspenseTexture("/ktx2/desktop8k/8081_earthbump10k.ktx2", { flipV: true });

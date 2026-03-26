@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, Clock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import BlogArticleBody from "@/components/Blog/BlogArticleBody";
 import { estimateReadMinutesMarkdown } from "@/lib/blogReadTime";
+import { blogInnerVariants, blogListVariants, blogShellVariants } from "@/lib/uiMotion";
 
 interface BlogPost {
   id: string;
@@ -54,26 +55,28 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
     });
   };
 
-  if (!isVisible) return null;
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -24 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -24 }}
-      transition={{ type: "spring", damping: 25 }}
-      className="fixed inset-x-0 top-[10vh] bottom-[35vh] z-30 px-6"
-    >
-      <div className="h-full max-w-5xl mx-auto glass-panel overflow-hidden">
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          key="blog-overlay"
+          variants={blogShellVariants}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          className="fixed inset-x-0 top-[10vh] bottom-[35vh] z-30 px-6"
+        >
+      <div className="h-full max-w-5xl mx-auto overflow-hidden rounded-xl border border-border/50 bg-card/95 shadow-xl">
         <div className="h-full overflow-y-auto custom-scrollbar p-6 md:p-8">
           <AnimatePresence mode="wait">
             {selectedPost ? (
               // Single Post View
               <motion.div
                 key="post"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                variants={blogInnerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
               >
                 <button
                   onClick={() => setSelectedPost(null)}
@@ -127,9 +130,10 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
               // Blog List View
               <motion.div
                 key="list"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                variants={blogListVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
               >
                 <div className="flex items-center justify-between mb-8">
                   <div>
@@ -214,7 +218,9 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
           </AnimatePresence>
         </div>
       </div>
-    </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

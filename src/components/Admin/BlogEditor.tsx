@@ -3,7 +3,7 @@ import { ImagePlus, Eye, Pencil, Loader2, Heading2, List, ListOrdered, Quote, Mi
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { API_BASE_URL } from "@/lib/api";
+import { uploadAdminImage } from "@/lib/uploadAdminImage";
 import BlogArticleBody from "@/components/Blog/BlogArticleBody";
 import { toast } from "sonner";
 
@@ -51,19 +51,7 @@ export default function BlogEditor({ values, onChange, token, autoFocus }: Props
   const setField = (key: keyof BlogEditorValues, v: string) =>
     onChange({ ...valuesRef.current, [key]: v });
 
-  const uploadFile = async (file: File): Promise<string> => {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch(`${API_BASE_URL}/api/blog/upload-image`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: fd,
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.error || "Upload failed");
-    if (!data?.url) throw new Error("No image URL returned");
-    return data.url as string;
-  };
+  const uploadFile = (file: File) => uploadAdminImage(file, token);
 
   const handleInlineImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

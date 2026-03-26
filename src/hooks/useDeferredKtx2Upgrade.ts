@@ -11,10 +11,9 @@ type ConfigureTexture = (tex: Texture) => void;
 // - unnecessary worker pools / memory churn
 const ktx2LoaderByRenderer = new WeakMap<WebGLRenderer, KTX2Loader>();
 
-const DEBUG = true;
-function log(...args: any[]) {
+const DEBUG = import.meta.env.DEV;
+function log(...args: unknown[]) {
   if (!DEBUG) return;
-  // eslint-disable-next-line no-console
   console.log(...args);
 }
 
@@ -25,7 +24,24 @@ type UpgradeJob = {
   flipV?: boolean;
   configure?: ConfigureTexture;
   onReady: (tex: Texture) => void;
+  /** Skip swap if base level exceeds this (mobile GPUs are often 4096). */
+  maxTextureSize: number;
 };
+
+function textureBaseDimensions(tex: Texture): { w: number; h: number } | null {
+  const img = tex.image as
+    | { width?: number; height?: number; mipmaps?: { width: number; height: number }[] }
+    | undefined;
+  if (!img) return null;
+  if (typeof img.width === "number" && typeof img.height === "number") {
+    return { w: img.width, h: img.height };
+  }
+  const m0 = img.mipmaps?.[0];
+  if (m0 && typeof m0.width === "number" && typeof m0.height === "number") {
+    return { w: m0.width, h: m0.height };
+  }
+  return null;
+}
 
 const upgradeQueue: UpgradeJob[] = [];
 const queuedKeys = new Set<string>();
@@ -61,6 +77,20 @@ function drainQueue(loader: KTX2Loader) {
           job.highUrl,
           (hi) => {
             log("[KTX2 upgrade] load success", job.highUrl);
+            const dim = textureBaseDimensions(hi);
+            const limit = job.maxTextureSize;
+            if (dim && (dim.w > limit || dim.h > limit)) {
+              log(
+                "[KTX2 upgrade] skip swap (exceeds maxTextureSize)",
+                job.highUrl,
+                dim.w,
+                dim.h,
+                limit
+              );
+              hi.dispose();
+              requestIdle(step, 1200);
+              return;
+            }
             hi.flipY = false;
             hi.generateMipmaps = false;
             hi.needsUpdate = true;
@@ -73,8 +103,9 @@ function drainQueue(loader: KTX2Loader) {
           },
           undefined,
           (err) => {
-            // eslint-disable-next-line no-console
-            console.warn("[KTX2 upgrade] failed:", job.highUrl, err);
+            if (DEBUG) {
+              console.warn("[KTX2 upgrade] failed:", job.highUrl, err);
+            }
             log("[KTX2 upgrade] load error", job.highUrl);
 
             // Continue queue even if this one fails.
@@ -128,6 +159,18 @@ function createKtx2Loader(gl: WebGLRenderer) {
   return loader;
 }
 
+/**
+ * Fetch Basis JS + WASM as soon as WebGL exists (same loader instance as deferred upgrades).
+ * Avoids `<link rel="preload">` “unused” warnings while keeping the transcoder hot before idle-queue work.
+ */
+export function warmKtx2TranscoderForRenderer(gl: WebGLRenderer): void {
+  if (!shouldAttemptHighRes()) return;
+  const loader = createKtx2Loader(gl);
+  void Promise.resolve(loader.init?.()).catch(() => {
+    log("[KTX2] transcoder warm init failed");
+  });
+}
+
 function flipTextureV(tex: Texture) {
   // KTX2 textures can appear inverted depending on origin metadata / platform.
   // Flip in UV space (repeat/offset) rather than flipY, which is not supported
@@ -178,6 +221,7 @@ export function useDeferredKtx2Upgrade(opts: {
       highUrl: opts.highUrl,
       flipV: opts.flipV,
       configure: opts.configure,
+      maxTextureSize: gl.capabilities.maxTextureSize,
       onReady: (hi) => {
         log("[KTX2 upgrade] swap -> active", opts.highUrl);
         setTex(hi);

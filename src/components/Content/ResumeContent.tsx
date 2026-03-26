@@ -19,20 +19,13 @@ const ResumeContent = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+        className="space-y-3"
       >
-        <div className="min-w-0">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
-            My <span className="text-gradient-unc">Resume</span>
-          </h2>
-          <p className="text-muted-foreground">Experience and education</p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 shrink-0 self-start sm:mt-1"
-          onClick={handleDownloadPdf}
-        >
+        <h2 className="font-display text-3xl md:text-4xl font-bold mb-2">
+          My <span className="text-gradient-unc">Resume</span>
+        </h2>
+        <p className="text-muted-foreground">Experience and education</p>
+        <Button variant="outline" size="sm" className="gap-2 w-fit" onClick={handleDownloadPdf}>
           <Download className="w-4 h-4" />
           PDF
         </Button>

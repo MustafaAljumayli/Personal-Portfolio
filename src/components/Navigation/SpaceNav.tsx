@@ -35,7 +35,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/30 backdrop-blur-md border-b border-border/30">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/30 backdrop-blur-md">
         <div className="px-6 py-4 flex items-center justify-between">
           {/* Logo */}
           <button
@@ -119,10 +119,11 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
       <AnimatePresence>
         {isMobileOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 z-40 bg-background/95 backdrop-blur-lg pt-20"
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.34, ease: [0.25, 0.1, 0.25, 1] }}
+            className="fixed inset-0 z-40 min-h-[100dvh] bg-card pt-20 overflow-y-auto"
           >
             <div className="flex flex-col items-center gap-4 p-6">
               {navItems.map((item, index) => {

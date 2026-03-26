@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { isMobileDevice } from "@/lib/device";
@@ -7,24 +7,26 @@ import { useKtx2SuspenseTexture } from "@/hooks/useKtx2SuspenseTexture";
 import { useBasicTexture } from "@/hooks/useBasicTexture";
 
 const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THREE.Texture }) => {
+  const skySeg = isMobile ? 16 : 20;
   const meshRef = useRef<THREE.Mesh>(null);
 
   useMemo(() => {
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = isMobile ? 2 : 8;
+    texture.anisotropy = isMobile ? 2 : 4;
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
     texture.repeat.set(-1, 1);
-  }, [texture]);
+  }, [texture, isMobile]);
 
   useFrame((state) => {
-    if (!meshRef.current) return;
-    meshRef.current.rotation.y = state.clock.elapsedTime * 0.01;
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    mesh.rotation.y = state.clock.elapsedTime * 0.01;
   });
 
   return (
     <mesh ref={meshRef}>
-      <sphereGeometry args={[140, isMobile ? 24 : 64, isMobile ? 24 : 64]} />
+      <sphereGeometry args={[140, skySeg, skySeg]} />
       <meshBasicMaterial
         map={texture}
         side={THREE.BackSide}
@@ -40,9 +42,9 @@ const MilkyWayShared = ({ isMobile, texture }: { isMobile: boolean; texture: THR
 const MobileMilkyWay = () => {
   const isMobile = true;
   const low = useBasicTexture("/mobile/8k_stars_milky_way.jpg");
-  // Keep mobile stars stable: avoid late background swap that can disappear on some devices.
+  // Desktop 8K KTX2 often exceeds mobile maxTextureSize (4096) → invalid upload / black sky.
   const texture = useDeferredKtx2Upgrade({
-    enabled: false,
+    enabled: true,
     low,
     highUrl: "/ktx2/mobile4k/stars_4k.ktx2",
     flipV: true,

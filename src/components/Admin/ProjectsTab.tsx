@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { Save, Loader2, Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
+import { Save, Loader2, Plus, Trash2, GripVertical, ChevronDown, ChevronUp, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { fetchSection, saveSection } from "@/lib/content-api";
+import { uploadAdminImage } from "@/lib/uploadAdminImage";
 
 interface Project {
   title: string;
@@ -13,16 +14,26 @@ interface Project {
   tech: string[];
   githubUrl?: string | null;
   liveUrl?: string | null;
+  imageUrl?: string | null;
 }
 
-const emptyProject: Project = { title: "", bullets: [""], tech: [], githubUrl: "", liveUrl: "" };
+const emptyProject: Project = {
+  title: "",
+  bullets: [""],
+  tech: [],
+  githubUrl: "",
+  liveUrl: "",
+  imageUrl: null,
+};
 
 export default function ProjectsTab({ token }: { token: string }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [imageUploading, setImageUploading] = useState<number | null>(null);
   const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const imageInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const expand = (i: number | null) => {
     setExpanded(i);
@@ -104,6 +115,20 @@ export default function ProjectsTab({ token }: { token: string }) {
     update(pi, { tech: val.split(",").map((s) => s.trim()).filter(Boolean) });
   };
 
+  const handleProjectImage = async (pi: number, file: File | undefined) => {
+    if (!file || !token) return;
+    setImageUploading(pi);
+    try {
+      const url = await uploadAdminImage(file, token);
+      update(pi, { imageUrl: url });
+      toast.success("Image uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setImageUploading(null);
+    }
+  };
+
   if (!loaded) return <Loader2 className="w-5 h-5 animate-spin mx-auto mt-8" />;
 
   return (
@@ -121,9 +146,16 @@ export default function ProjectsTab({ token }: { token: string }) {
             onClick={() => expand(expanded === i ? null : i)}
             className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/20 transition-colors"
           >
-            <div className="flex items-center gap-2">
-              <GripVertical className="w-4 h-4 text-muted-foreground" />
-              <span className="font-semibold">{proj.title || "(untitled)"}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <GripVertical className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+              {proj.imageUrl ? (
+                <img
+                  src={proj.imageUrl}
+                  alt=""
+                  className="h-9 w-14 flex-shrink-0 rounded object-cover"
+                />
+              ) : null}
+              <span className="font-semibold truncate">{proj.title || "(untitled)"}</span>
               <span className="text-xs text-muted-foreground ml-2">
                 {proj.tech.slice(0, 3).join(", ")}{proj.tech.length > 3 ? "…" : ""}
               </span>
@@ -150,6 +182,61 @@ export default function ProjectsTab({ token }: { token: string }) {
                 Title
                 <Input className="mt-1 bg-secondary/30" value={proj.title} onChange={(e) => update(i, { title: e.target.value })} />
               </label>
+
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Project image</span>
+                <p className="text-xs text-muted-foreground">
+                  Shown above the title on the site. JPEG, PNG, WebP, or GIF (same storage as blog images).
+                </p>
+                <input
+                  ref={(el) => {
+                    imageInputRefs.current[i] = el;
+                  }}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleProjectImage(i, e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    disabled={imageUploading === i}
+                    onClick={() => imageInputRefs.current[i]?.click()}
+                  >
+                    {imageUploading === i ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-4 w-4" />
+                    )}
+                    Upload
+                  </Button>
+                  {proj.imageUrl ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => update(i, { imageUrl: null })}>
+                      Remove image
+                    </Button>
+                  ) : null}
+                </div>
+                <label className="block text-sm text-muted-foreground">
+                  Or paste image URL
+                  <Input
+                    className="mt-1 bg-secondary/30 text-foreground"
+                    value={proj.imageUrl ?? ""}
+                    onChange={(e) => update(i, { imageUrl: e.target.value.trim() || null })}
+                    placeholder="https://…"
+                  />
+                </label>
+                {proj.imageUrl ? (
+                  <div className="relative aspect-video max-w-md overflow-hidden rounded-lg border border-border/50 bg-secondary/20">
+                    <img src={proj.imageUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
+                ) : null}
+              </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">

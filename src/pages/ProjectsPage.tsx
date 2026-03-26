@@ -46,22 +46,31 @@ const ProjectsPage = () => {
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 * index }}
-                className="glass-panel p-5"
+                className="glass-panel flex flex-col gap-3 p-5"
               >
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-gradient-to-br from-primary/25 to-accent/20">
+                  {project.imageUrl ? (
+                    <img
+                      src={project.imageUrl}
+                      alt={project.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : null}
+                </div>
+
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="font-display text-lg font-semibold">
-                    {project.title}
-                  </h2>
-                  <div className="flex gap-2 text-muted-foreground">
+                  <h2 className="font-display text-lg font-semibold">{project.title}</h2>
+                  <div className="flex flex-shrink-0 gap-2 text-muted-foreground">
                     {project.githubUrl && (
                       <a
                         href={project.githubUrl}
                         target="_blank"
                         rel="noreferrer"
                         aria-label={`${project.title} GitHub`}
-                        className="hover:text-primary transition-colors"
+                        className="transition-colors hover:text-primary"
                       >
-                        <Github className="w-4 h-4" />
+                        <Github className="h-4 w-4" />
                       </a>
                     )}
                     {project.liveUrl && (
@@ -70,23 +79,21 @@ const ProjectsPage = () => {
                         target="_blank"
                         rel="noreferrer"
                         aria-label={`${project.title} Live link`}
-                        className="hover:text-primary transition-colors"
+                        className="transition-colors hover:text-primary"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        <ExternalLink className="h-4 w-4" />
                       </a>
                     )}
                   </div>
                 </div>
 
-                <p className="text-sm text-muted-foreground mt-2">
-                  {project.description}
-                </p>
+                <p className="text-sm text-muted-foreground">{project.description}</p>
 
-                <div className="flex flex-wrap gap-2 mt-4">
+                <div className="mt-1 flex flex-wrap gap-2">
                   {project.tech.map((t) => (
                     <span
                       key={t}
-                      className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary"
+                      className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
                     >
                       {t}
                     </span>
