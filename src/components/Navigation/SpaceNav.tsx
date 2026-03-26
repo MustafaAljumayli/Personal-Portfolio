@@ -42,7 +42,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
             onClick={handleLogoClick}
             className="font-display text-2xl font-bold tracking-tight hover:text-primary transition-colors"
           >
-            <img src="/astronautpfp.png" alt="Astronaut picture of Mustafa" className="w-10" />
+            <img src="/astronautpfp.PNG" alt="Astronaut picture of Mustafa" className="w-10" />
             {/* <span className="text-gradient-unc">M</span> */}
             {/* <span className="text-gradient-unc">M</span>
             <span className="text-foreground">ustafa </span> */}
