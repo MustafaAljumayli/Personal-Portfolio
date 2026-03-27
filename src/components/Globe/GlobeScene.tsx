@@ -343,7 +343,7 @@ const WebGLFallback = () => (
         <li>Click Relaunch to restart Chrome.</li>
       </ol>
       <p className="mt-4 text-xs text-muted-foreground/80">
-        If you're on another browser, ensure WebGL or graphics acceleration is enabled or try any other browser besides Chrome. This website has been tested to work well on Safari, Firefox, Brave, Opera, Atlas, and Edge.
+        If you're on another browser, ensure WebGL or graphics acceleration is enabled or try any other browser that isn't Chromium-based. This website has been tested to work well on Safari, Firefox, Edge, and Atlas.
       </p>
     </div>
   </div>

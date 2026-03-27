@@ -64,10 +64,10 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
           initial="hidden"
           animate="visible"
           exit="hidden"
-          className="fixed inset-x-0 top-[10vh] bottom-[35vh] z-30 px-6"
+          className="fixed inset-x-0 top-[8vh] bottom-[8vh] z-30 px-4 sm:px-6 md:top-[10vh] md:bottom-[14vh]"
         >
       <div className="h-full max-w-5xl mx-auto overflow-hidden rounded-xl border border-border/50 bg-card/95 shadow-xl">
-        <div className="h-full overflow-y-auto custom-scrollbar p-6 md:p-8">
+        <div className="h-full overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8">
           <AnimatePresence mode="wait">
             {selectedPost ? (
               // Single Post View
@@ -99,13 +99,13 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                   )}
 
                   <h1
-                    className={`font-display text-2xl sm:text-3xl md:text-4xl font-bold ${selectedPost.cover_image_url ? "order-2 md:order-1" : ""}`}
+                    className={`font-display text-3xl sm:text-3xl md:text-4xl font-bold ${selectedPost.cover_image_url ? "order-2 md:order-1" : ""}`}
                   >
                     {selectedPost.title}
                   </h1>
 
                   <div
-                    className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-muted-foreground ${selectedPost.cover_image_url ? "order-3 md:order-2" : ""}`}
+                    className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-sm sm:text-sm text-muted-foreground ${selectedPost.cover_image_url ? "order-3 md:order-2" : ""}`}
                   >
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
@@ -122,7 +122,7 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                   </div>
                   <BlogArticleBody
                     content={selectedPost.content}
-                    className={`prose prose-invert prose-lg max-w-none text-foreground/90 [&_p]:leading-[1.75] ${selectedPost.cover_image_url ? "order-4" : ""}`}
+                    className={`prose prose-invert prose-lg max-w-none text-foreground/90 [&_p]:text-base [&_p]:leading-[1.8] sm:[&_p]:text-[1.05rem] ${selectedPost.cover_image_url ? "order-4" : ""}`}
                   />
                 </article>
               </motion.div>
@@ -137,10 +137,10 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
               >
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="font-display text-3xl md:text-4xl font-bold">
+                    <h2 className="font-display text-3xl sm:text-3xl md:text-4xl font-bold">
                       <span className="text-gradient-unc">Blog</span>
                     </h2>
-                    <p className="text-muted-foreground mt-1">
+                    <p className="text-base text-muted-foreground mt-1">
                       Thoughts, tutorials, and insights
                     </p>
                   </div>
@@ -193,11 +193,11 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-display text-xl font-semibold group-hover:text-primary transition-colors">
+                            <h3 className="font-display text-2xl sm:text-xl font-semibold group-hover:text-primary transition-colors">
                               {post.title}
                             </h3>
                             {post.excerpt && (
-                              <p className="text-muted-foreground mt-2 line-clamp-2">
+                              <p className="text-base text-muted-foreground mt-2 line-clamp-2">
                                 {post.excerpt}
                               </p>
                             )}

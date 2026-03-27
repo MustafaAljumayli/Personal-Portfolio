@@ -10,7 +10,7 @@ const AboutContent = () => {
   const { about } = useResumeData();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 items-center">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -38,6 +38,8 @@ const AboutContent = () => {
           );
         })}
       </motion.div>
+
+      <img src="/cartoonmustafa.PNG" alt="Mustafa" className="w-[200px] h-full rounded-full block mx-auto" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

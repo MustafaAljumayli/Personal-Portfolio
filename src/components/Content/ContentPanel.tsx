@@ -57,13 +57,13 @@ const ContentPanel = ({ activeSection, onClose, showContent, onExitComplete }: C
       {showContent && (
         <motion.div
           key={`panel-card-${activeSection}`}
-          className="fixed inset-0 z-30 flex items-center justify-center p-2 sm:p-6 pointer-events-none"
+          className="fixed inset-0 z-30 flex items-center justify-center p-2 sm:p-4 md:p-6 pointer-events-none"
           variants={contentCardVariants}
           initial="hidden"
           animate="visible"
           exit="hidden"
         >
-          <div className="relative z-10 max-h-[70dvh] w-full max-w-2xl overflow-y-auto overflow-x-hidden rounded-lg border border-border/50 bg-card/95 p-4 shadow-xl md:p-8 custom-scrollbar pointer-events-auto [transform:translateZ(0)]">
+          <div className="relative z-10 max-h-[78dvh] w-full max-w-4xl xl:max-w-5xl overflow-y-auto overflow-x-hidden rounded-lg border border-border/50 bg-card/95 p-4 shadow-xl md:p-8 custom-scrollbar pointer-events-auto [transform:translateZ(0)]">
             <button
               onClick={onClose}
               className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-secondary/50 text-foreground transition-colors hover:bg-secondary"
