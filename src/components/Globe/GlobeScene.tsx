@@ -297,8 +297,61 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
   );
 };
 
+function detectWebGL(): boolean {
+  try {
+    const c = document.createElement("canvas");
+    return !!(
+      c.getContext("webgl2") ||
+      c.getContext("webgl") ||
+      c.getContext("experimental-webgl")
+    );
+  } catch {
+    return false;
+  }
+}
+
+const WebGLFallback = () => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background p-6">
+    <div className="w-full max-w-lg rounded-xl border border-border/60 bg-card/70 p-6 text-center shadow-xl backdrop-blur">
+      <img src="/astronautpfp.PNG" alt="Mustafa" className="mx-auto mb-4 w-[160px] rounded-full" />
+      <h1 className="font-display text-3xl font-bold text-foreground">WebGL Is Not Available</h1>
+      <p className="mt-4 text-muted-foreground leading-relaxed">
+        Hey, it's Mustafa here! My site requires WebGL to render. 
+        <br />(I know, I know, I'm sorry...Fun-fact:{" "}
+        <a
+          href="https://earth.google.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-foreground underline underline-offset-2 hover:text-foreground/80"
+        >
+          Google Earth
+        </a>{" "}
+        actually has the same issue). <br /><br />If you're using{" "}
+        <span className="font-medium text-foreground">Chrome</span>, hardware acceleration may be
+        turned off. Follow the steps below to enable it:
+      </p>
+      <p className="mt-3 text-sm text-muted-foreground">
+        or copy and paste this link into your browser:{" "}
+        <code className="rounded bg-muted px-2 py-1 font-mono text-xs text-foreground select-all">
+          chrome://settings/system
+        </code>
+      </p>
+      <ol className="mx-auto mt-5 max-w-sm list-inside list-decimal space-y-2 text-left text-sm text-muted-foreground">
+        <li>Open Chrome Settings.</li>
+        <li>Go to System.</li>
+        <li>Turn "Use graphics acceleration when available" ON.</li>
+        <li>Click Relaunch to restart Chrome.</li>
+      </ol>
+      <p className="mt-4 text-xs text-muted-foreground/80">
+        If you're on another browser, ensure WebGL or graphics acceleration is enabled or try any other browser besides Chrome. This website has been tested to work well on Safari, Firefox, Brave, Opera, Atlas, and Edge.
+      </p>
+    </div>
+  </div>
+);
+
 const GlobeScene = memo(function GlobeScene(props: GlobeSceneProps) {
   const [globeReady, setGlobeReady] = useState(false);
+  const webglSupported = useMemo(() => detectWebGL(), []);
   const desynchronized = useMemo(() => {
     // Chrome Desktop: `desynchronized` can cause uneven frame pacing (micro-stutter).
     // Mobile browsers tend to benefit more from reduced input latency.
@@ -309,6 +362,8 @@ const GlobeScene = memo(function GlobeScene(props: GlobeSceneProps) {
     setGlobeReady(true);
     props.onGlobeReady?.();
   }, [props.onGlobeReady]);
+
+  if (!webglSupported) return <WebGLFallback />;
 
   return (
     <div className="absolute inset-0 translate-y-0 scale-100">
