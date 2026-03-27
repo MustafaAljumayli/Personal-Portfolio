@@ -64,7 +64,7 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
           initial="hidden"
           animate="visible"
           exit="hidden"
-          className="fixed inset-x-0 top-[8vh] bottom-[8vh] z-30 px-4 sm:px-6 md:top-[10vh] md:bottom-[14vh]"
+          className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+5.5rem)] bottom-[8vh] z-30 px-4 sm:px-6 md:top-[10vh] md:bottom-[14vh]"
         >
       <div className="h-full max-w-5xl mx-auto overflow-hidden rounded-xl border border-border/50 bg-card/95 shadow-xl">
         <div className="h-full overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8">
@@ -184,11 +184,11 @@ const BlogOverlay = ({ isVisible, onClose }: BlogOverlayProps) => {
                       >
                         <div className="flex flex-col gap-4 md:flex-row md:gap-6 md:items-start">
                           {post.cover_image_url && (
-                            <div className="w-full h-40 md:w-32 md:h-24 rounded-lg overflow-hidden flex-shrink-0">
+                            <div className="w-full h-40 md:w-32 md:h-24 rounded-lg overflow-hidden flex-shrink-0 bg-secondary/30">
                               <img
                                 src={post.cover_image_url}
                                 alt={post.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                className="w-full h-full object-contain md:object-cover group-hover:scale-105 transition-transform"
                               />
                             </div>
                           )}
