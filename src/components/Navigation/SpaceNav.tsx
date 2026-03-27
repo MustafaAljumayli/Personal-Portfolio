@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Menu, X, User, Briefcase, Code, Mail, FileText, BookOpen, Sparkles, LogIn, LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
@@ -19,8 +19,31 @@ const navItems = [
   { id: "ai", label: "Mustafa.ai", icon: Sparkles },
 ];
 
+const mobileMenuListVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      delayChildren: 0.02,
+      staggerChildren: 0.035,
+    },
+  },
+  exit: {
+    transition: {
+      staggerChildren: 0.02,
+      staggerDirection: -1,
+    },
+  },
+};
+
+const mobileMenuItemVariants = {
+  hidden: { opacity: 0, y: 8, scale: 0.985 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -6 },
+};
+
 const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
   const { user, isAdmin, signOut } = useAuth();
 
   const handleNavClick = (id: string) => {
@@ -123,22 +146,28 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.34, ease: [0.25, 0.1, 0.25, 1] }}
-            className="fixed inset-0 z-40 min-h-[100dvh] bg-card pt-20 overflow-y-auto"
+            transition={{ duration: reduceMotion ? 0.12 : 0.2, ease: "easeOut" }}
+            className="fixed inset-0 z-40 min-h-[100dvh] bg-card pt-20 overflow-y-auto transform-gpu will-change-transform"
           >
-            <div className="flex flex-col items-center gap-4 p-6">
-              {navItems.map((item, index) => {
+            <motion.div
+              className="flex flex-col items-center gap-4 p-6"
+              variants={reduceMotion ? undefined : mobileMenuListVariants}
+              initial={reduceMotion ? false : "hidden"}
+              animate={reduceMotion ? undefined : "visible"}
+              exit={reduceMotion ? undefined : "exit"}
+            >
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeSection === item.id;
                 return (
                   <motion.button
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    variants={reduceMotion ? undefined : mobileMenuItemVariants}
+                    transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
+                    whileTap={{ scale: 0.98 }}
                     className={`
-                       flex items-center gap-3 px-6 py-3 rounded-lg text-lg font-medium w-full max-w-xs transition-all
+                       flex items-center gap-3 px-6 py-3 rounded-lg text-lg font-medium w-full max-w-xs transition-colors duration-150 transform-gpu
                       ${isActive
                         ? "bg-primary/20 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
@@ -183,7 +212,7 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                   </Link>
                 )}
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
