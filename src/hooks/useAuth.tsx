@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearStoredEngagementSession } from "@/lib/engagement-session";
+import { API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
 
 interface AuthContextType {
@@ -31,6 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (!error && data) {
       setIsAdmin(true);
+      clearStoredEngagementSession();
     } else {
       setIsAdmin(false);
     }
@@ -68,14 +71,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      toast.error(error.message);
-      return { error };
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/auth/sign-in`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        const err = new Error(body?.error || "Failed to sign in");
+        toast.error(err.message);
+        return { error: err };
+      }
+
+      const setSessionRes = await supabase.auth.setSession({
+        access_token: body.access_token,
+        refresh_token: body.refresh_token,
+      });
+      if (setSessionRes.error) {
+        toast.error(setSessionRes.error.message);
+        return { error: setSessionRes.error };
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error("Failed to sign in");
+      toast.error(err.message);
+      return { error: err };
     }
+
     toast.success("Welcome back!");
     return { error: null };
   };

@@ -20,6 +20,7 @@ function log(...args: unknown[]) {
 /** Idle spacing so Basis transcoding + GPU uploads don’t stack (desktop felt janky when tight). */
 const MS_BEFORE_FIRST_DEFERRED_JOB = 750;
 const MS_BETWEEN_DEFERRED_JOBS = 2200;
+const KTX2_LOAD_TIMEOUT_MS = 60_000;
 
 type UpgradeJob = {
   key: string;
@@ -77,9 +78,28 @@ function drainQueue(loader: KTX2Loader) {
         log("[KTX2 upgrade] init failed (continuing)", job.highUrl);
       })
       .finally(() => {
+        let settled = false;
+        const finishOnce = () => {
+          if (settled) return false;
+          settled = true;
+          return true;
+        };
+        const timeoutHandle = window.setTimeout(() => {
+          if (!finishOnce()) return;
+          log("[KTX2 upgrade] timeout, keeping current resolution", job.highUrl);
+          // Continue queue even if this one timed out.
+          requestIdle(step, MS_BETWEEN_DEFERRED_JOBS);
+        }, KTX2_LOAD_TIMEOUT_MS);
+
         loader.load(
           job.highUrl,
           (hi) => {
+            if (!finishOnce()) {
+              // Ignore late completion after timeout and avoid leaking GPU memory.
+              hi.dispose();
+              return;
+            }
+            clearTimeout(timeoutHandle);
             log("[KTX2 upgrade] load success", job.highUrl);
             const dim = textureBaseDimensions(hi);
             const limit = job.maxTextureSize;
@@ -107,6 +127,8 @@ function drainQueue(loader: KTX2Loader) {
           },
           undefined,
           (err) => {
+            if (!finishOnce()) return;
+            clearTimeout(timeoutHandle);
             if (DEBUG) {
               console.warn("[KTX2 upgrade] failed:", job.highUrl, err);
             }

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Menu, X, User, Briefcase, Code, Mail, FileText, BookOpen, Sparkles, LogIn, LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { clearStoredEngagementSession, getStoredEngagementSession } from "@/lib/engagement-session";
 
 interface SpaceNavProps {
   activeSection: string | null;
@@ -43,8 +44,28 @@ const mobileMenuItemVariants = {
 
 const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [engagementEmail, setEngagementEmail] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
   const { user, isAdmin, signOut } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    const syncSession = () => {
+      const stored = getStoredEngagementSession();
+      setEngagementEmail(stored?.session?.email || null);
+    };
+    syncSession();
+    window.addEventListener("engagement-session-changed", syncSession);
+    window.addEventListener("storage", syncSession);
+    return () => {
+      window.removeEventListener("engagement-session-changed", syncSession);
+      window.removeEventListener("storage", syncSession);
+    };
+  }, []);
+
+  const nextPath = `${location.pathname}${location.search}` || "/";
+  const engagementAuthPath = "/auth";
+  const engagementProfilePath = `/profile?next=${encodeURIComponent(nextPath)}`;
 
   const handleNavClick = (id: string) => {
     onSectionChange(id);
@@ -59,13 +80,17 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/30 backdrop-blur-md">
-        <div className="px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 max-md:[@media(orientation:landscape)]:px-2.5 max-md:[@media(orientation:landscape)]:py-1.5">
           {/* Logo */}
           <button
             onClick={handleLogoClick}
-            className="font-display text-2xl font-bold tracking-tight hover:text-primary transition-colors"
+            className="font-display text-2xl font-bold tracking-tight transition-colors hover:text-primary max-md:[@media(orientation:landscape)]:text-xl"
           >
-            <img src="/astronautpfp.PNG" alt="Astronaut picture of Mustafa" className="w-10" />
+            <img
+              src="/astronautpfp.PNG"
+              alt="Astronaut picture of Mustafa"
+              className="w-10 max-md:[@media(orientation:landscape)]:w-7"
+            />
             {/* <span className="text-gradient-unc">M</span> */}
             {/* <span className="text-gradient-unc">M</span>
             <span className="text-foreground">ustafa </span> */}
@@ -119,20 +144,41 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                 </button>
               </>
             ) : (
-              <Link
-                to="/auth"
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Sign In</span>
-              </Link>
+              <>
+                {engagementEmail ? (
+                  <>
+                    <Link
+                      to={engagementProfilePath}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Profile</span>
+                    </Link>
+                    <button
+                      onClick={() => clearStoredEngagementSession()}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to={engagementAuthPath}
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign In</span>
+                  </Link>
+                )}
+              </>
             )}
           </div>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+            className="lg:hidden flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/50 transition-colors hover:bg-secondary max-md:[@media(orientation:landscape)]:h-8 max-md:[@media(orientation:landscape)]:w-8"
           >
             {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -147,10 +193,10 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: reduceMotion ? 0.12 : 0.2, ease: "easeOut" }}
-            className="fixed inset-0 z-40 min-h-[100dvh] bg-card pt-20 overflow-y-auto transform-gpu will-change-transform"
+            className="fixed inset-0 z-40 min-h-[100dvh] overflow-y-auto bg-card pt-20 transform-gpu will-change-transform max-md:[@media(orientation:landscape)]:pt-14"
           >
             <motion.div
-              className="flex flex-col items-center gap-4 p-6"
+              className="flex flex-col items-center gap-4 p-6 max-md:[@media(orientation:landscape)]:gap-2 max-md:[@media(orientation:landscape)]:p-4"
               variants={reduceMotion ? undefined : mobileMenuListVariants}
               initial={reduceMotion ? false : "hidden"}
               animate={reduceMotion ? undefined : "visible"}
@@ -202,14 +248,36 @@ const SpaceNav = ({ activeSection, onSectionChange }: SpaceNavProps) => {
                     </button>
                   </>
                 ) : (
-                  <Link
-                    to="/auth"
-                    className="flex items-center gap-3 px-6 py-3 text-primary w-full max-w-xs"
-                    onClick={() => setIsMobileOpen(false)}
-                  >
-                    <LogIn className="w-5 h-5" />
-                    <span>Sign In</span>
-                  </Link>
+                  <>
+                    {engagementEmail ? (
+                      <>
+                        <Link
+                          to={engagementProfilePath}
+                          className="flex items-center gap-3 px-6 py-3 text-primary w-full max-w-xs"
+                          onClick={() => setIsMobileOpen(false)}
+                        >
+                          <User className="w-5 h-5" />
+                          <span>Profile</span>
+                        </Link>
+                        <button
+                          onClick={() => { clearStoredEngagementSession(); setIsMobileOpen(false); }}
+                          className="flex items-center gap-3 px-6 py-3 text-muted-foreground w-full max-w-xs"
+                        >
+                          <LogOut className="w-5 h-5" />
+                          <span>Sign Out</span>
+                        </button>
+                      </>
+                    ) : (
+                      <Link
+                        to={engagementAuthPath}
+                        onClick={() => setIsMobileOpen(false)}
+                        className="flex items-center gap-3 px-6 py-3 text-primary w-full max-w-xs"
+                      >
+                        <LogIn className="w-5 h-5" />
+                        <span>Sign In</span>
+                      </Link>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>

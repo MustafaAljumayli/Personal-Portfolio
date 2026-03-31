@@ -3,8 +3,10 @@ import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { isMobileDevice } from "@/lib/device";
+import { toast } from "sonner";
 import Earth from "./Earth";
 import MilkyWay from "./MilkyWay";
 import { warmKtx2TranscoderForRenderer } from "@/hooks/useDeferredKtx2Upgrade";
@@ -18,15 +20,15 @@ interface GlobeSceneProps {
 
 const DEFAULT_CAMERA = new THREE.Vector3(0, 0, 6);
 
-const sectionCoordinates: Record<string, { rotation: { x: number; y: number }; camera: { x: number; y: number; z: number } }> = {
-  about: { rotation: { x: 0.2, y: -0.5 }, camera: { x: 2, y: 1, z: 4 } },
-  projects: { rotation: { x: 0, y: 0.8 }, camera: { x: -2, y: 0.5, z: 4 } },
-  skills: { rotation: { x: -0.3, y: 2.2 }, camera: { x: 1, y: -1, z: 4 } },
-  contact: { rotation: { x: 0.4, y: 3.5 }, camera: { x: -1, y: 1.5, z: 4 } },
-  resume: { rotation: { x: -0.2, y: 4.8 }, camera: { x: 0, y: -0.5, z: 4.5 } },
+const sectionCameraCoordinates: Record<string, { camera: { x: number; y: number; z: number } }> = {
+  about: { camera: { x: 2, y: 1, z: 4 } },
+  projects: { camera: { x: -2, y: 0.5, z: 4 } },
+  skills: { camera: { x: 1, y: -1, z: 4 } },
+  contact: { camera: { x: -1, y: 1.5, z: 4 } },
+  resume: { camera: { x: 0, y: -0.5, z: 4.5 } },
   // Keep the globe inside the same canvas; "zoom out" effect via camera distance.
-  blog: { rotation: { x: 0, y: 0 }, camera: { x: 0, y: 6, z: 8 } },
-  ai: { rotation: { x: 0.1, y: 1.5 }, camera: { x: 3, y: 0, z: 3 } },
+  blog: { camera: { x: 0, y: 6, z: 8 } },
+  ai: { camera: { x: 3, y: 0, z: 3 } },
 };
 
 const CameraController = ({
@@ -46,8 +48,8 @@ const CameraController = ({
     const prev = prevSection.current;
     prevSection.current = activeSection;
 
-    if (activeSection && sectionCoordinates[activeSection]) {
-      const { camera: cam } = sectionCoordinates[activeSection];
+    if (activeSection && sectionCameraCoordinates[activeSection]) {
+      const { camera: cam } = sectionCameraCoordinates[activeSection];
       targetPosition.current.set(cam.x, cam.y, cam.z);
       arrived.current = false;
       targetSection.current = activeSection;
@@ -174,6 +176,108 @@ const CanvasResizeFix = () => {
   return null;
 };
 
+/**
+ * Shows a sticky hint when FPS is sustained below 50.
+ * - stays visible until sustained recovery above 50 FPS
+ * - or until the user manually dismisses it
+ */
+const FpsWarningMonitor = ({ enabled }: { enabled: boolean }) => {
+  const TOAST_ID = "fps-warning";
+  const RECOVERY_TOAST_ID = "fps-recovered";
+  const navigate = useNavigate();
+  const sampleSecondsRef = useRef(0);
+  const sampleFramesRef = useRef(0);
+  const lowFpsSecondsRef = useRef(0);
+  const recoveredSecondsRef = useRef(0);
+  const toastVisibleRef = useRef(false);
+  const dismissedByUserRef = useRef(false);
+  const hadVisibleWarningRef = useRef(false);
+
+  useEffect(() => {
+    if (enabled) return;
+    toast.dismiss(TOAST_ID);
+    toast.dismiss(RECOVERY_TOAST_ID);
+    toastVisibleRef.current = false;
+    dismissedByUserRef.current = false;
+    hadVisibleWarningRef.current = false;
+    lowFpsSecondsRef.current = 0;
+    recoveredSecondsRef.current = 0;
+  }, [enabled]);
+
+  useFrame((_, delta) => {
+    if (!enabled) return;
+    if (document.visibilityState !== "visible") return;
+
+    sampleSecondsRef.current += delta;
+    sampleFramesRef.current += 1;
+
+    if (sampleSecondsRef.current < 1) return;
+
+    const fps = sampleFramesRef.current / sampleSecondsRef.current;
+    sampleSecondsRef.current = 0;
+    sampleFramesRef.current = 0;
+
+    if (fps < 50) {
+      lowFpsSecondsRef.current += 1;
+      recoveredSecondsRef.current = 0;
+    } else {
+      lowFpsSecondsRef.current = 0;
+      recoveredSecondsRef.current += 1;
+    }
+
+    if (fps >= 50 && recoveredSecondsRef.current >= 3) {
+      if (toastVisibleRef.current) {
+        toast.dismiss(TOAST_ID);
+        toastVisibleRef.current = false;
+      }
+      if (hadVisibleWarningRef.current) {
+        toast.success("FPS recovered to 50+! 🎉", {
+          id: RECOVERY_TOAST_ID,
+          position: "bottom-right",
+          duration: 6000,
+          description: "That worked. Enjoy your enhanced site experience. Love you! <3 :)",
+        });
+        hadVisibleWarningRef.current = false;
+      }
+      // Allow future low-FPS warnings once conditions had recovered.
+      dismissedByUserRef.current = false;
+      return;
+    }
+
+    if (lowFpsSecondsRef.current < 4) return;
+    if (toastVisibleRef.current || dismissedByUserRef.current) return;
+
+    toastVisibleRef.current = true;
+    hadVisibleWarningRef.current = true;
+    toast("Hey, your browser is rendering below 50 FPS!", {
+      id: TOAST_ID,
+      position: "bottom-right",
+      duration: Infinity,
+      onDismiss: () => {
+        toastVisibleRef.current = false;
+        dismissedByUserRef.current = true;
+      },
+      description: (
+        <span>
+          Most 3D sites actually have this issue but jokes on them; I need you to have the best user experience possible. This can happen when Energy Saver is enabled in your browser.{" "}
+          <button
+            type="button"
+            onClick={() => {
+              navigate("/performance-instructions");
+            }}
+            className="font-medium text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+          >
+            Click here to fix it
+          </button>
+          .
+        </span>
+      ),
+    });
+  });
+
+  return null;
+};
+
 const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeSceneProps) => {
   const [rotationComplete, setRotationComplete] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
@@ -196,9 +300,15 @@ const GlobeContent = ({ activeSection, onSectionReady, onGlobeReady }: GlobeScen
   const justDeactivated = prevSectionRef.current !== null && activeSection === null;
   const controlsLocked = !!activeSection || isReturning || justDeactivated;
 
-  const targetRotation = activeSection && sectionCoordinates[activeSection]
-    ? sectionCoordinates[activeSection].rotation
-    : null;
+  const targetRotation = useMemo(() => {
+    if (!activeSection) return null;
+    return {
+      // Keep section focus random but within a comfortable latitude window.
+      x: THREE.MathUtils.randFloat(-0.45, 0.45),
+      // Full longitude range for variety.
+      y: THREE.MathUtils.randFloat(-Math.PI, Math.PI),
+    };
+  }, [activeSection]);
 
   useEffect(() => {
     const prev = prevSectionRef.current;
@@ -378,7 +488,7 @@ const GlobeScene = memo(function GlobeScene(props: GlobeSceneProps) {
           camera={{ position: [0, 0, 6], fov: 45 }}
           // Continuous loop: keeps WebGL in sync with Framer Motion / tab transitions (demand can drop frames).
           frameloop="always"
-          // Cap DPR at 1.5× — sharp on Retina without paying full 2× fill rate.
+          // Cap DPR at 1.5x - sharp on Retina without paying full 2x fill rate.
           dpr={[1, 1.5]}
           gl={{
             antialias: false,
@@ -393,6 +503,7 @@ const GlobeScene = memo(function GlobeScene(props: GlobeSceneProps) {
           }}
         >
           <Suspense fallback={null}>
+            <FpsWarningMonitor enabled />
             <GlobeContent {...props} onGlobeReady={handleGlobeReady} />
             <CanvasResizeFix />
           </Suspense>

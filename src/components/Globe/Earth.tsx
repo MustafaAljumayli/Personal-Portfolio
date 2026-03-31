@@ -115,9 +115,11 @@ const EarthShared = ({
 
     } else if (isAutoRotating) {
       rotationSettledRef.current = false;
-      mesh.rotation.y += delta * 0.1;
+      const nextEarthY = mesh.rotation.y + delta * 0.1;
+      mesh.rotation.y = THREE.MathUtils.euclideanModulo(nextEarthY + Math.PI, Math.PI * 2) - Math.PI;
       if (clouds) {
-        clouds.rotation.y += delta * 0.12;
+        const nextCloudY = clouds.rotation.y + delta * 0.12;
+        clouds.rotation.y = THREE.MathUtils.euclideanModulo(nextCloudY + Math.PI, Math.PI * 2) - Math.PI;
       }
     }
   });

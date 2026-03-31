@@ -12,6 +12,7 @@ export const UI_SOFT_EASE = [0.25, 0.1, 0.25, 1] as const;
 export const scrimFadeVariants: Variants = {
   hidden: { opacity: 0, transition: { duration: 0.28, ease: UI_SOFT_EASE } },
   visible: { opacity: 1, transition: { duration: 0.32, ease: UI_SOFT_EASE } },
+  exit: { opacity: 0, transition: { duration: 0.22, ease: UI_SOFT_EASE } },
 };
 
 /** Card: transform + opacity on a solid surface (no blur). */
@@ -26,6 +27,12 @@ export const contentCardVariants: Variants = {
     y: 0,
     transition: { duration: 0.38, ease: UI_SOFT_EASE },
   },
+  exit: {
+    opacity: 0,
+    y: 56,
+    scale: 0.975,
+    transition: { duration: 0.3, ease: UI_SOFT_EASE },
+  },
 };
 
 /** Blog shell: opacity + small y; avoid glass/blur on the animated root. */
@@ -39,6 +46,12 @@ export const blogShellVariants: Variants = {
     opacity: 1,
     y: 0,
     transition: { duration: 0.36, ease: UI_SOFT_EASE },
+  },
+  exit: {
+    opacity: 0,
+    y: -40,
+    scale: 0.985,
+    transition: { duration: 0.28, ease: UI_SOFT_EASE },
   },
 };
 

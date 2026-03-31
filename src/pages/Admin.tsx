@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Plus, FileText, Brain, Trash2, Edit, Save, X, Loader2,
   Upload, CheckCircle, Sparkles, Settings, User, Briefcase, Code,
-  Mail, GraduationCap,
+  Mail, GraduationCap, MoreHorizontal, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/lib/api";
 import { notifyContentUpdated } from "@/hooks/useResumeData";
+import {
+  deleteAdminComment,
+  fetchAdminComments as fetchBlogAdminComments,
+  replyAdminComment,
+  type AdminBlogComment,
+} from "@/lib/blog-api";
 
 import SiteSettingsTab from "@/components/Admin/SiteSettingsTab";
 import AboutTab from "@/components/Admin/AboutTab";
@@ -61,6 +67,15 @@ const Admin = () => {
   const [newPost, setNewPost] = useState<BlogEditorValues>(emptyBlogPost);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [isSavingPost, setIsSavingPost] = useState(false);
+  const [adminComments, setAdminComments] = useState<AdminBlogComment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [commentActionId, setCommentActionId] = useState<string | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [deleteReasons, setDeleteReasons] = useState<Record<string, string>>({});
+  const [openCommentMenuId, setOpenCommentMenuId] = useState<string | null>(null);
+  const [moderationPanel, setModerationPanel] = useState<{ id: string; mode: "reply" | "delete-silent" | "delete-notify" } | null>(null);
+  const [commentSearch, setCommentSearch] = useState("");
+  const [expandedCommentThreads, setExpandedCommentThreads] = useState<Set<string>>(new Set());
 
   // Knowledge base state
   const [knowledge, setKnowledge] = useState<KnowledgeItem[]>([]);
@@ -88,6 +103,15 @@ const Admin = () => {
       checkResumeExists();
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (!editingPost) {
+      setAdminComments([]);
+      return;
+    }
+    fetchCommentQueue(editingPost.id);
+  }, [editingPost, isAdmin]);
 
   // ── Resume helpers ──
   const checkResumeExists = async () => {
@@ -207,6 +231,234 @@ const Admin = () => {
     const { error } = await supabase.from("blog_posts").delete().eq("id", id);
     if (error) toast.error("Failed to delete post");
     else { toast.success("Post deleted"); fetchPosts(); }
+  };
+
+  const fetchCommentQueue = async (postId?: string) => {
+    if (!token) return;
+    setIsLoadingComments(true);
+    try {
+      const result = await fetchBlogAdminComments(token, "all", postId);
+      setAdminComments(result.items);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load comments");
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  const handleReplyComment = async (commentId: string) => {
+    const reply = (replyDrafts[commentId] ?? "").trim();
+    if (!reply) {
+      toast.error("Write a reply first");
+      return;
+    }
+    setCommentActionId(commentId);
+    try {
+      await replyAdminComment(token, commentId, reply, true);
+      toast.success("Reply posted to thread and emailed");
+      setReplyDrafts((prev) => ({ ...prev, [commentId]: "" }));
+      setModerationPanel(null);
+      await fetchCommentQueue(editingPost?.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send reply");
+    } finally {
+      setCommentActionId(null);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, notify: boolean) => {
+    setCommentActionId(commentId);
+    try {
+      await deleteAdminComment(token, commentId, {
+        notify,
+        reason: deleteReasons[commentId] ?? "",
+      });
+      toast.success(notify ? "Comment deleted and user notified" : "Comment deleted silently");
+      setModerationPanel(null);
+      await fetchCommentQueue(editingPost?.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete comment");
+    } finally {
+      setCommentActionId(null);
+    }
+  };
+
+  const openModerationPanel = (commentId: string, mode: "reply" | "delete-silent" | "delete-notify") => {
+    setOpenCommentMenuId(null);
+    setModerationPanel({ id: commentId, mode });
+  };
+
+  const toggleCommentThread = (commentId: string) => {
+    setExpandedCommentThreads((prev) => {
+      const next = new Set(prev);
+      if (next.has(commentId)) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
+  };
+
+  const adminCommentChildren = useMemo(() => {
+    const map = new Map<string | null, AdminBlogComment[]>();
+    for (const item of adminComments) {
+      const key = item.parent_comment_id ?? null;
+      const arr = map.get(key) ?? [];
+      arr.push(item);
+      map.set(key, arr);
+    }
+    return map;
+  }, [adminComments]);
+
+  const filteredCommentIds = useMemo(() => {
+    const query = commentSearch.trim().toLowerCase();
+    if (!query) return new Set(adminComments.map((c) => c.id));
+
+    const byId = new Map(adminComments.map((c) => [c.id, c]));
+    const directMatches = adminComments.filter((c) =>
+      `${c.comment_body} ${c.commenter_name} ${c.commenter_email}`.toLowerCase().includes(query)
+    );
+    const included = new Set<string>();
+
+    const includeDescendants = (id: string) => {
+      const children = adminCommentChildren.get(id) ?? [];
+      for (const child of children) {
+        if (included.has(child.id)) continue;
+        included.add(child.id);
+        includeDescendants(child.id);
+      }
+    };
+
+    for (const match of directMatches) {
+      included.add(match.id);
+      includeDescendants(match.id);
+      let parentId = match.parent_comment_id;
+      while (parentId) {
+        if (included.has(parentId)) break;
+        included.add(parentId);
+        parentId = byId.get(parentId)?.parent_comment_id ?? null;
+      }
+    }
+
+    return included;
+  }, [adminCommentChildren, adminComments, commentSearch]);
+
+  const renderAdminCommentThread = (parentId: string | null, depth = 0): JSX.Element[] => {
+    const items = (adminCommentChildren.get(parentId) ?? []).filter((item) => filteredCommentIds.has(item.id));
+    return items.map((item) => {
+      const childCount = (adminCommentChildren.get(item.id) ?? []).filter((c) => filteredCommentIds.has(c.id)).length;
+      const isRootExpanded = commentSearch.trim() ? true : expandedCommentThreads.has(item.id);
+      return (
+        <div
+          key={item.id}
+          className="rounded-lg border border-border/40 p-3 bg-background/50"
+          style={{ marginLeft: depth > 0 ? `${Math.min(depth, 4) * 14}px` : 0 }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>{new Date(item.created_at).toLocaleString()}</span>
+              <span>{item.commenter_name} ({item.commenter_email})</span>
+            </div>
+            <div className="relative">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={() => setOpenCommentMenuId((prev) => (prev === item.id ? null : item.id))}
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+              {openCommentMenuId === item.id && (
+                <div className="absolute right-0 top-8 z-20 min-w-40 rounded-md border border-border/40 bg-card/95 p-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => openModerationPanel(item.id, "reply")}
+                    className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-secondary/60"
+                  >
+                    Reply
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openModerationPanel(item.id, "delete-silent")}
+                    className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-secondary/60"
+                  >
+                    Delete Silently
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openModerationPanel(item.id, "delete-notify")}
+                    className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-secondary/60"
+                  >
+                    Delete + Notify
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 whitespace-pre-wrap text-sm">{item.comment_body}</p>
+          {moderationPanel?.id === item.id && moderationPanel.mode === "reply" && (
+            <div className="mt-2 space-y-2 rounded-md border border-border/30 bg-secondary/10 p-3">
+              <Textarea
+                value={replyDrafts[item.id] ?? ""}
+                onChange={(e) => setReplyDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                placeholder="Write a threaded reply"
+                className="bg-secondary/20 min-h-[84px]"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => handleReplyComment(item.id)} disabled={commentActionId === item.id}>
+                  Reply
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setModerationPanel(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+          {moderationPanel?.id === item.id && (moderationPanel.mode === "delete-silent" || moderationPanel.mode === "delete-notify") && (
+            <div className="mt-2 space-y-2 rounded-md border border-border/30 bg-secondary/10 p-3">
+              <Input
+                value={deleteReasons[item.id] ?? ""}
+                onChange={(e) => setDeleteReasons((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                placeholder="Optional moderation reason"
+                className="bg-secondary/20"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={moderationPanel.mode === "delete-notify" ? "destructive" : "outline"}
+                  onClick={() => handleDeleteComment(item.id, moderationPanel.mode === "delete-notify")}
+                  disabled={commentActionId === item.id}
+                >
+                  {moderationPanel.mode === "delete-notify" ? "Delete + Notify" : "Delete Silently"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setModerationPanel(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+          {depth === 0 && childCount > 0 && (
+            <button
+              type="button"
+              onClick={() => toggleCommentThread(item.id)}
+              className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {isRootExpanded ? (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  Hide thread
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                  Show thread ({childCount} replies)
+                </>
+              )}
+            </button>
+          )}
+          {(depth > 0 || isRootExpanded) && renderAdminCommentThread(item.id, depth + 1)}
+        </div>
+      );
+    });
   };
 
   // ── Knowledge helpers ──
@@ -487,6 +739,35 @@ const Admin = () => {
                     {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     Save Changes
                   </Button>
+
+                  <div className="rounded-lg border border-border/40 p-4 bg-secondary/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-display font-semibold">Comments for this post</h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchCommentQueue(editingPost.id)}
+                        disabled={isLoadingComments}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                    {isLoadingComments ? (
+                      <p className="text-sm text-muted-foreground">Loading comments...</p>
+                    ) : adminComments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No comments on this post yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        <Input
+                          value={commentSearch}
+                          onChange={(e) => setCommentSearch(e.target.value)}
+                          placeholder="Search comments by content or user"
+                          className="bg-secondary/20"
+                        />
+                        {renderAdminCommentThread(null)}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="space-y-3">
