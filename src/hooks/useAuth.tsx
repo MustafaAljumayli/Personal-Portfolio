@@ -1,9 +1,13 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { clearStoredEngagementSession } from "@/lib/engagement-session";
 import { API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
+
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+const INACTIVITY_CHECK_INTERVAL_MS = 30 * 1000; // check every 30 seconds
+const LAST_ACTIVITY_KEY = "admin_last_activity";
 
 interface AuthContextType {
   user: User | null;
@@ -22,6 +26,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const signOutRef = useRef<(() => Promise<void>) | null>(null);
+  const isAdminRef = useRef(false);
+
+  const touchActivity = useCallback(() => {
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+  }, []);
+
+  useEffect(() => {
+    isAdminRef.current = isAdmin;
+  }, [isAdmin]);
+
+  // Inactivity-based auto sign-out for admin sessions
+  useEffect(() => {
+    if (!user || !isAdmin) return;
+
+    touchActivity();
+
+    const activityEvents = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
+    const handler = () => touchActivity();
+    for (const evt of activityEvents) window.addEventListener(evt, handler, { passive: true });
+
+    const interval = setInterval(() => {
+      const lastStr = localStorage.getItem(LAST_ACTIVITY_KEY);
+      if (!lastStr) return;
+      const elapsed = Date.now() - Number(lastStr);
+      if (elapsed >= INACTIVITY_TIMEOUT_MS && isAdminRef.current) {
+        signOutRef.current?.();
+        toast.info("Signed out due to inactivity");
+      }
+    }, INACTIVITY_CHECK_INTERVAL_MS);
+
+    return () => {
+      for (const evt of activityEvents) window.removeEventListener(evt, handler);
+      clearInterval(interval);
+    };
+  }, [user, isAdmin, touchActivity]);
 
   const checkAdminRole = async (userId: string) => {
     const { data, error } = await supabase
@@ -124,11 +165,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error: null };
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     await supabase.auth.signOut();
     setIsAdmin(false);
     toast.success("Signed out successfully");
-  };
+  }, []);
+
+  useEffect(() => {
+    signOutRef.current = signOut;
+  }, [signOut]);
+
+  // On mount, check if an admin session went stale while the tab was closed
+  useEffect(() => {
+    const lastStr = localStorage.getItem(LAST_ACTIVITY_KEY);
+    if (!lastStr) return;
+    const elapsed = Date.now() - Number(lastStr);
+    if (elapsed >= INACTIVITY_TIMEOUT_MS) {
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        if (s) {
+          supabase.auth.signOut().then(() => {
+            setIsAdmin(false);
+            setUser(null);
+            setSession(null);
+            localStorage.removeItem(LAST_ACTIVITY_KEY);
+            toast.info("Session expired due to inactivity");
+          });
+        }
+      });
+    }
+  }, []);
 
   return (
     <AuthContext.Provider

@@ -5,6 +5,7 @@ import {
   ArrowLeft, Plus, FileText, Brain, Trash2, Edit, Save, X, Loader2,
   Upload, CheckCircle, Sparkles, Settings, User, Briefcase, Code,
   Mail, GraduationCap, MoreHorizontal, ChevronDown, ChevronRight,
+  Archive, Eye, EyeOff, Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,8 @@ import ExperienceTab from "@/components/Admin/ExperienceTab";
 import EducationTab from "@/components/Admin/EducationTab";
 import BlogEditor, { type BlogEditorValues } from "@/components/Admin/BlogEditor";
 
+type BlogPostStatus = "published" | "draft" | "archived";
+
 interface BlogPost {
   id: string;
   title: string;
@@ -39,6 +42,7 @@ interface BlogPost {
   excerpt: string | null;
   cover_image_url: string | null;
   published: boolean;
+  status: BlogPostStatus;
   created_at: string;
 }
 
@@ -67,6 +71,7 @@ const Admin = () => {
   const [newPost, setNewPost] = useState<BlogEditorValues>(emptyBlogPost);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [isSavingPost, setIsSavingPost] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | BlogPostStatus>("all");
   const [adminComments, setAdminComments] = useState<AdminBlogComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [commentActionId, setCommentActionId] = useState<string | null>(null);
@@ -168,13 +173,13 @@ const Admin = () => {
   // ── Blog helpers ──
   const fetchPosts = async () => {
     const { data } = await supabase.from("blog_posts").select("*").order("created_at", { ascending: false });
-    if (data) setPosts(data);
+    if (data) setPosts(data as unknown as BlogPost[]);
   };
 
   const generateSlug = (title: string) =>
     title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-  const handleCreatePost = async () => {
+  const handleCreatePost = async (status: BlogPostStatus = "published") => {
     if (!newPost.title || !newPost.content) { toast.error("Title and content are required"); return; }
     setIsSavingPost(true);
     const { data: inserted, error } = await supabase.from("blog_posts").insert({
@@ -184,16 +189,15 @@ const Admin = () => {
       excerpt: newPost.excerpt || null,
       cover_image_url: newPost.cover_image_url || null,
       author_id: user!.id,
-      published: true,
-      published_at: new Date().toISOString(),
+      status,
     }).select("id").single();
     if (error) { toast.error("Failed to create post"); }
     else {
-      toast.success("Post created!");
+      toast.success(status === "draft" ? "Draft saved!" : "Post published!");
       setNewPost(emptyBlogPost);
       setIsCreatingPost(false);
       fetchPosts();
-      if (inserted?.id) {
+      if (inserted?.id && status === "published") {
         await fetch(`${API_BASE_URL}/api/rag/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -204,27 +208,42 @@ const Admin = () => {
     setIsSavingPost(false);
   };
 
-  const handleUpdatePost = async () => {
+  const handleUpdatePost = async (statusOverride?: BlogPostStatus) => {
     if (!editingPost) return;
     setIsSavingPost(true);
+    const nextStatus = statusOverride ?? editingPost.status;
     const { error } = await supabase.from("blog_posts").update({
       title: editingPost.title,
       content: editingPost.content,
       excerpt: editingPost.excerpt,
       cover_image_url: editingPost.cover_image_url || null,
+      status: nextStatus,
     }).eq("id", editingPost.id);
     if (error) { toast.error("Failed to update post"); }
     else {
-      toast.success("Post updated!");
+      const label = nextStatus === "draft" ? "Moved to drafts" : nextStatus === "archived" ? "Post archived" : "Post updated";
+      toast.success(label);
       setEditingPost(null);
       fetchPosts();
-      await fetch(`${API_BASE_URL}/api/rag/sync`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ mode: "blog", blogPostIds: [editingPost.id] }),
-      }).catch(() => {});
+      if (nextStatus === "published") {
+        await fetch(`${API_BASE_URL}/api/rag/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ mode: "blog", blogPostIds: [editingPost.id] }),
+        }).catch(() => {});
+      }
     }
     setIsSavingPost(false);
+  };
+
+  const handleQuickStatusChange = async (postId: string, status: BlogPostStatus) => {
+    const { error } = await supabase.from("blog_posts").update({ status }).eq("id", postId);
+    if (error) { toast.error("Failed to update status"); }
+    else {
+      const label = status === "draft" ? "Moved to drafts" : status === "archived" ? "Post archived" : "Post published";
+      toast.success(label);
+      fetchPosts();
+    }
   };
 
   const handleDeletePost = async (id: string) => {
@@ -699,10 +718,16 @@ const Admin = () => {
                     <Button variant="ghost" size="icon" onClick={() => setIsCreatingPost(false)}><X className="w-4 h-4" /></Button>
                   </div>
                   <BlogEditor values={newPost} onChange={setNewPost} token={token} autoFocus />
-                  <Button onClick={handleCreatePost} disabled={isSavingPost}>
-                    {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    Publish Post
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => handleCreatePost("published")} disabled={isSavingPost}>
+                      {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                      Publish
+                    </Button>
+                    <Button variant="secondary" onClick={() => handleCreatePost("draft")} disabled={isSavingPost}>
+                      {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                      Save as Draft
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <Button onClick={() => setIsCreatingPost(true)} className="gap-2"><Plus className="w-4 h-4" /> New Post</Button>
@@ -710,7 +735,18 @@ const Admin = () => {
               {editingPost && (
                 <div className="glass-panel p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-display font-semibold">Edit Post</h3>
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-display font-semibold">Edit Post</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium uppercase ${
+                        editingPost.status === "published"
+                          ? "bg-green-500/20 text-green-400"
+                          : editingPost.status === "draft"
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-zinc-500/20 text-zinc-400"
+                      }`}>
+                        {editingPost.status}
+                      </span>
+                    </div>
                     <Button variant="ghost" size="icon" onClick={() => setEditingPost(null)}><X className="w-4 h-4" /></Button>
                   </div>
                   <BlogEditor
@@ -735,10 +771,27 @@ const Admin = () => {
                     }
                     token={token}
                   />
-                  <Button onClick={handleUpdatePost} disabled={isSavingPost}>
-                    {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save Changes
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => handleUpdatePost()} disabled={isSavingPost}>
+                      {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                      Save Changes
+                    </Button>
+                    {editingPost.status !== "published" && (
+                      <Button variant="secondary" onClick={() => handleUpdatePost("published")} disabled={isSavingPost} className="gap-1.5">
+                        <Eye className="w-4 h-4" /> Publish
+                      </Button>
+                    )}
+                    {editingPost.status === "published" && (
+                      <Button variant="secondary" onClick={() => handleUpdatePost("draft")} disabled={isSavingPost} className="gap-1.5">
+                        <EyeOff className="w-4 h-4" /> Unpublish (Draft)
+                      </Button>
+                    )}
+                    {editingPost.status !== "archived" && (
+                      <Button variant="outline" onClick={() => handleUpdatePost("archived")} disabled={isSavingPost} className="gap-1.5">
+                        <Archive className="w-4 h-4" /> Archive
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="rounded-lg border border-border/40 p-4 bg-secondary/10 space-y-3">
                     <div className="flex items-center justify-between">
@@ -770,8 +823,30 @@ const Admin = () => {
                   </div>
                 </div>
               )}
+
+              <div className="flex flex-wrap gap-1.5">
+                {(["all", "published", "draft", "archived"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setStatusFilter(f)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      statusFilter === f
+                        ? "bg-primary/20 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                    }`}
+                  >
+                    {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                    <span className="ml-1.5 opacity-70">
+                      ({f === "all" ? posts.length : posts.filter((p) => p.status === f).length})
+                    </span>
+                  </button>
+                ))}
+              </div>
+
               <div className="space-y-3">
-                {posts.map((post) => (
+                {posts
+                  .filter((p) => statusFilter === "all" || p.status === statusFilter)
+                  .map((post) => (
                   <div key={post.id} className="glass-panel p-4 flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1 flex items-center gap-4">
                       {post.cover_image_url ? (
@@ -794,13 +869,48 @@ const Admin = () => {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <h4 className="font-semibold">{post.title}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">{post.title}</h4>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase leading-none ${
+                            post.status === "published"
+                              ? "bg-green-500/20 text-green-400"
+                              : post.status === "draft"
+                                ? "bg-yellow-500/20 text-yellow-400"
+                                : "bg-zinc-500/20 text-zinc-400"
+                          }`}>
+                            {post.status}
+                          </span>
+                        </div>
                         <p className="text-sm text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => setEditingPost(post)}><Edit className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeletePost(post.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => setEditingPost(post)} title="Edit">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      {post.status === "draft" && (
+                        <Button variant="ghost" size="icon" onClick={() => handleQuickStatusChange(post.id, "published")} title="Publish">
+                          <Eye className="w-4 h-4 text-green-400" />
+                        </Button>
+                      )}
+                      {post.status === "published" && (
+                        <Button variant="ghost" size="icon" onClick={() => handleQuickStatusChange(post.id, "draft")} title="Unpublish (Draft)">
+                          <EyeOff className="w-4 h-4 text-yellow-400" />
+                        </Button>
+                      )}
+                      {post.status !== "archived" && (
+                        <Button variant="ghost" size="icon" onClick={() => handleQuickStatusChange(post.id, "archived")} title="Archive">
+                          <Archive className="w-4 h-4 text-zinc-400" />
+                        </Button>
+                      )}
+                      {post.status === "archived" && (
+                        <Button variant="ghost" size="icon" onClick={() => handleQuickStatusChange(post.id, "published")} title="Republish">
+                          <Eye className="w-4 h-4 text-green-400" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => handleDeletePost(post.id)} title="Delete">
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
                 ))}
